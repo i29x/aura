@@ -1726,11 +1726,18 @@ function Functions.SetAutoXD(state)
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
 	local LocalPlayer = Players.LocalPlayer
-	local Range = 160
+	local Camera = Workspace.CurrentCamera
+	local Range = 500
+	local debounce = false
 
 	if Functions.AutoXDInputConnection then
 		Functions.AutoXDInputConnection:Disconnect()
 		Functions.AutoXDInputConnection = nil
+	end
+
+	if Functions.AutoXDTouchConnection then
+		Functions.AutoXDTouchConnection:Disconnect()
+		Functions.AutoXDTouchConnection = nil
 	end
 
 	local function sideFromText(v)
@@ -1787,9 +1794,7 @@ function Functions.SetAutoXD(state)
 	end
 
 	local function isEnemy(player)
-		if player == LocalPlayer then
-			return false
-		end
+		if player == LocalPlayer then return false end
 
 		local mySide = getSide(LocalPlayer)
 		local theirSide = getSide(player)
@@ -1806,7 +1811,7 @@ function Functions.SetAutoXD(state)
 			return LocalPlayer.TeamColor ~= player.TeamColor
 		end
 
-		return false
+		return true
 	end
 
 	local function getGun()
@@ -1838,22 +1843,23 @@ function Functions.SetAutoXD(state)
 		return nil, false
 	end
 
-	local function canSee(enemyCharacter, targetPart)
+	local function canSee(enemyCharacter, part)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
-		if not character or not root or not enemyCharacter or not targetPart then
+		if not character or not root or not enemyCharacter or not part then
 			return false
 		end
 
-		local origin = root.Position + Vector3.new(0, 1.7, 0)
+		local origin = root.Position + Vector3.new(0, 2, 0)
+		local direction = part.Position - origin
 
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = {character}
 		params.IgnoreWater = true
 
-		local result = Workspace:Raycast(origin, targetPart.Position - origin, params)
+		local result = Workspace:Raycast(origin, direction, params)
 
 		return not result or result.Instance:IsDescendantOf(enemyCharacter)
 	end
@@ -1862,11 +1868,9 @@ function Functions.SetAutoXD(state)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
-		if not root then
-			return nil
-		end
+		if not root then return nil end
 
-		local bestHead = nil
+		local bestPart = nil
 		local bestDist = Range
 
 		for _, player in ipairs(Players:GetPlayers()) do
@@ -1881,13 +1885,13 @@ function Functions.SetAutoXD(state)
 
 					if dist <= bestDist and canSee(char, head) then
 						bestDist = dist
-						bestHead = head
+						bestPart = head
 					end
 				end
 			end
 		end
 
-		return bestHead
+		return bestPart
 	end
 
 	local function faceTarget(target)
@@ -1903,13 +1907,16 @@ function Functions.SetAutoXD(state)
 		root.CFrame = CFrame.new(pos, look)
 	end
 
-	local function shoot()
-		if not Functions.States.AutoXD or Functions.AutoXDId ~= id then
+	local function shootToTarget()
+		if debounce or not Functions.States.AutoXD or Functions.AutoXDId ~= id then
 			return
 		end
 
+		debounce = true
+
 		local target = getTarget()
 		if not target then
+			debounce = false
 			return
 		end
 
@@ -1918,6 +1925,7 @@ function Functions.SetAutoXD(state)
 		local tool, equipped = getGun()
 
 		if not character or not humanoid or not tool then
+			debounce = false
 			return
 		end
 
@@ -1927,12 +1935,25 @@ function Functions.SetAutoXD(state)
 
 		faceTarget(target)
 
+		local oldCam = Camera and Camera.CFrame
+
+		if Camera then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+		end
+
 		task.defer(function()
 			if Functions.States.AutoXD and Functions.AutoXDId == id and tool and tool.Parent then
 				pcall(function()
 					tool:Activate()
 				end)
 			end
+
+			task.defer(function()
+				if Camera and oldCam then
+					Camera.CFrame = oldCam
+				end
+				debounce = false
+			end)
 		end)
 	end
 
@@ -1940,14 +1961,14 @@ function Functions.SetAutoXD(state)
 		return
 	end
 
-	Functions.AutoXDInputConnection = UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
-			return
-		end
-
+	Functions.AutoXDInputConnection = UserInputService.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			shoot()
+			shootToTarget()
 		end
+	end)
+
+	Functions.AutoXDTouchConnection = UserInputService.TouchTap:Connect(function()
+		shootToTarget()
 	end)
 end
 
