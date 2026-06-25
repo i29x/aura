@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
 
 local lp = Players.LocalPlayer
 local pg = lp:WaitForChild("PlayerGui")
@@ -14,6 +15,13 @@ function Gui.Create(OptionConfig, Functions)
 	local playersIcon = OptionConfig.Assets.PlayersIcon
 	local settingsIcon = OptionConfig.Assets.SettingsIcon
 	local avatarImage = "rbxthumb://type=AvatarHeadShot&id=" .. lp.UserId .. "&w=150&h=150"
+
+	local camera = Workspace.CurrentCamera
+	local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local panelScale = isMobile and math.clamp(math.min((viewport.X - 24) / 835, (viewport.Y - 24) / 490), 0.52, 0.74) or 1
+	local minClosedSize = isMobile and UDim2.fromOffset(60, 60) or UDim2.fromOffset(82, 82)
+	local minStartSize = isMobile and UDim2.fromOffset(44, 44) or UDim2.fromOffset(58, 58)
 
 	local old = pg:FindFirstChild("AxiAdminPanel")
 	if old then old:Destroy() end
@@ -78,6 +86,10 @@ function Gui.Create(OptionConfig, Functions)
 	main.Active = true
 	main.ZIndex = 10
 	main.Parent = gui
+
+	local mainScale = Instance.new("UIScale")
+	mainScale.Scale = panelScale
+	mainScale.Parent = main
 
 	corner(main, 32)
 	stroke(main, Color3.fromRGB(255, 255, 255), 0.66, 1)
@@ -1099,7 +1111,7 @@ function Gui.Create(OptionConfig, Functions)
 	minimized.Name = "Minimized"
 	minimized.AnchorPoint = Vector2.new(0.5, 0.5)
 	minimized.Position = UDim2.fromScale(0.5, 0.5)
-	minimized.Size = UDim2.fromOffset(82, 82)
+	minimized.Size = minClosedSize
 	minimized.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	minimized.BackgroundTransparency = 0.45
 	minimized.BorderSizePixel = 0
@@ -1109,13 +1121,13 @@ function Gui.Create(OptionConfig, Functions)
 	minimized.ZIndex = 100
 	minimized.Parent = gui
 
-	corner(minimized, 27)
+	corner(minimized, isMobile and 20 or 27)
 	stroke(minimized, Color3.fromRGB(255, 255, 255), 0.72, 1)
 
 	local minLogo = Instance.new("ImageLabel")
 	minLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 	minLogo.Position = UDim2.fromScale(0.5, 0.42)
-	minLogo.Size = UDim2.fromOffset(52, 52)
+	minLogo.Size = isMobile and UDim2.fromOffset(38, 38) or UDim2.fromOffset(52, 52)
 	minLogo.BackgroundTransparency = 1
 	minLogo.Image = logoAsset
 	minLogo.ScaleType = Enum.ScaleType.Fit
@@ -1129,7 +1141,7 @@ function Gui.Create(OptionConfig, Functions)
 	minText.BackgroundTransparency = 1
 	minText.Text = OptionConfig.Window.Title
 	minText.TextColor3 = Color3.fromRGB(0, 0, 0)
-	minText.TextSize = 13
+	minText.TextSize = isMobile and 10 or 13
 	minText.Font = Enum.Font.FredokaOne
 	minText.ZIndex = 101
 	minText.Parent = minimized
@@ -1158,6 +1170,10 @@ function Gui.Create(OptionConfig, Functions)
 	warningBox.BorderSizePixel = 0
 	warningBox.ZIndex = 201
 	warningBox.Parent = warningOverlay
+
+	local warningScale = Instance.new("UIScale")
+	warningScale.Scale = isMobile and math.clamp(panelScale + 0.06, 0.62, 0.82) or 1
+	warningScale.Parent = warningBox
 
 	corner(warningBox, 24)
 	stroke(warningBox, Color3.fromRGB(255, 255, 255), 0.72, 1)
@@ -1269,8 +1285,8 @@ function Gui.Create(OptionConfig, Functions)
 		t.Completed:Connect(function()
 			main.Visible = false
 			minimized.Visible = true
-			minimized.Size = UDim2.fromOffset(58, 58)
-			tween(minimized, {Size = UDim2.fromOffset(82, 82)}, 0.26)
+			minimized.Size = minStartSize
+			tween(minimized, {Size = minClosedSize}, 0.26)
 			busy = false
 		end)
 	end
@@ -1491,6 +1507,8 @@ Functions.Values = {
 	Speed = 16
 }
 
+Gui.Create(OptionConfig, Functions)
+
 function Functions.SetTeamHighlight(state)
 	Functions.States.TeamHighlight = state
 	Functions.TeamHighlights = Functions.TeamHighlights or {}
@@ -1706,20 +1724,20 @@ function Functions.SetAutoXD(state)
 	local id = Functions.AutoXDId
 	local Players = game:GetService("Players")
 	local Workspace = game:GetService("Workspace")
+	local UserInputService = game:GetService("UserInputService")
 	local LocalPlayer = Players.LocalPlayer
+	local Camera = Workspace.CurrentCamera
 	local Range = 160
 	local CheckDelay = 0.5
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-	if Functions.AutoXDConnection then
-		task.cancel(Functions.AutoXDConnection)
-		Functions.AutoXDConnection = nil
+	if Functions.AutoXDThread then
+		task.cancel(Functions.AutoXDThread)
+		Functions.AutoXDThread = nil
 	end
 
 	local function sideFromText(v)
-		if v == nil then
-			return nil
-		end
-
+		if v == nil then return nil end
 		local s = tostring(v):lower()
 
 		if s == "red" or s == "team1" or s == "team 1" or s == "side1" or s == "side 1" or s == "1" or s:find("red") then
@@ -1736,9 +1754,7 @@ function Functions.SetAutoXD(state)
 	local function getSide(player)
 		if player.Team then
 			local side = sideFromText(player.Team.Name)
-			if side then
-				return side
-			end
+			if side then return side end
 		end
 
 		local side =
@@ -1749,9 +1765,7 @@ function Functions.SetAutoXD(state)
 			sideFromText(player:GetAttribute("Side")) or
 			sideFromText(player:GetAttribute("side"))
 
-		if side then
-			return side
-		end
+		if side then return side end
 
 		local character = player.Character
 		if character then
@@ -1763,30 +1777,20 @@ function Functions.SetAutoXD(state)
 				sideFromText(character:GetAttribute("Side")) or
 				sideFromText(character:GetAttribute("side"))
 
-			if side then
-				return side
-			end
+			if side then return side end
 		end
 
 		if player.TeamColor and player.TeamColor ~= BrickColor.new("Medium stone grey") then
 			local c = player.TeamColor.Color
-
-			if c.R > c.B then
-				return "red"
-			end
-
-			if c.B > c.R then
-				return "blue"
-			end
+			if c.R > c.B then return "red" end
+			if c.B > c.R then return "blue" end
 		end
 
 		return nil
 	end
 
 	local function isEnemy(player)
-		if player == LocalPlayer then
-			return false
-		end
+		if player == LocalPlayer then return false end
 
 		local mySide = getSide(LocalPlayer)
 		local theirSide = getSide(player)
@@ -1864,26 +1868,24 @@ function Functions.SetAutoXD(state)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
-		if not root then
-			return nil
-		end
+		if not root then return nil end
 
 		local closestHead = nil
-		local closestDistance = Range
+		local closestDist = Range
 
 		for _, player in ipairs(Players:GetPlayers()) do
 			if isEnemy(player) then
-				local enemyCharacter = player.Character
-				local enemyHumanoid = enemyCharacter and enemyCharacter:FindFirstChildOfClass("Humanoid")
-				local enemyRoot = enemyCharacter and enemyCharacter:FindFirstChild("HumanoidRootPart")
-				local enemyHead = enemyCharacter and enemyCharacter:FindFirstChild("Head")
+				local char = player.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				local enemyRoot = char and char:FindFirstChild("HumanoidRootPart")
+				local head = char and char:FindFirstChild("Head")
 
-				if enemyCharacter and enemyHumanoid and enemyHumanoid.Health > 0 and enemyRoot and enemyHead then
-					local distance = (root.Position - enemyRoot.Position).Magnitude
+				if char and hum and hum.Health > 0 and enemyRoot and head then
+					local dist = (root.Position - enemyRoot.Position).Magnitude
 
-					if distance <= closestDistance and canSee(enemyCharacter, enemyHead) then
-						closestDistance = distance
-						closestHead = enemyHead
+					if dist <= closestDist and canSee(char, head) then
+						closestDist = dist
+						closestHead = head
 					end
 				end
 			end
@@ -1892,60 +1894,66 @@ function Functions.SetAutoXD(state)
 		return closestHead
 	end
 
-	local function fireTool(tool, target)
-		pcall(function()
-			tool:Activate()
-		end)
-
-		for _, v in ipairs(tool:GetChildren()) do
-			if v:IsA("RemoteEvent") then
-				pcall(function()
-					v:FireServer(target.Position, target)
-				end)
-
-				pcall(function()
-					v:FireServer(target)
-				end)
-
-				pcall(function()
-					v:FireServer({
-						Position = target.Position,
-						Target = target,
-						Hit = target,
-						Part = target
-					})
-				end)
-			end
-		end
-	end
-
-	local function shoot(target)
+	local function equipGun()
 		local character = LocalPlayer.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-		if not character or not humanoid or not target then
-			return
-		end
-
 		local tool, equipped = getGun()
 
-		if not tool then
-			return
+		if not tool or not humanoid then
+			return nil
 		end
 
 		if not equipped then
 			humanoid:EquipTool(tool)
-			tool.Parent = character
 		end
 
-		fireTool(tool, target)
+		return tool
+	end
+
+	local function aimCharacter(target)
+		local character = LocalPlayer.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+
+		if not root or not target then
+			return
+		end
+
+		local pos = root.Position
+		local look = Vector3.new(target.Position.X, pos.Y, target.Position.Z)
+		root.CFrame = CFrame.new(pos, look)
+	end
+
+	local function shoot(target)
+		if not target then return end
+
+		local tool = equipGun()
+		if not tool then return end
+
+		aimCharacter(target)
+
+		if isMobile and Camera then
+			local oldCFrame = Camera.CFrame
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+			pcall(function()
+				tool:Activate()
+			end)
+			task.defer(function()
+				if Camera then
+					Camera.CFrame = oldCFrame
+				end
+			end)
+		else
+			pcall(function()
+				tool:Activate()
+			end)
+		end
 	end
 
 	if not state then
 		return
 	end
 
-	Functions.AutoXDConnection = task.spawn(function()
+	Functions.AutoXDThread = task.spawn(function()
 		while Functions.States.AutoXD and Functions.AutoXDId == id do
 			if inMatch() then
 				local target = getTarget()
