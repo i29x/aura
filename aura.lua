@@ -1723,17 +1723,14 @@ function Functions.SetAutoXD(state)
 
 	local id = Functions.AutoXDId
 	local Players = game:GetService("Players")
-	local Workspace = game:GetService("Workspace")
 	local UserInputService = game:GetService("UserInputService")
+	local Workspace = game:GetService("Workspace")
 	local LocalPlayer = Players.LocalPlayer
-	local Camera = Workspace.CurrentCamera
 	local Range = 160
-	local CheckDelay = 0.5
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
-	if Functions.AutoXDThread then
-		task.cancel(Functions.AutoXDThread)
-		Functions.AutoXDThread = nil
+	if Functions.AutoXDInputConnection then
+		Functions.AutoXDInputConnection:Disconnect()
+		Functions.AutoXDInputConnection = nil
 	end
 
 	local function sideFromText(v)
@@ -1790,7 +1787,9 @@ function Functions.SetAutoXD(state)
 	end
 
 	local function isEnemy(player)
-		if player == LocalPlayer then return false end
+		if player == LocalPlayer then
+			return false
+		end
 
 		local mySide = getSide(LocalPlayer)
 		local theirSide = getSide(player)
@@ -1808,10 +1807,6 @@ function Functions.SetAutoXD(state)
 		end
 
 		return false
-	end
-
-	local function inMatch()
-		return getSide(LocalPlayer) ~= nil or LocalPlayer.Team ~= nil or (LocalPlayer.TeamColor and LocalPlayer.TeamColor ~= BrickColor.new("Medium stone grey"))
 	end
 
 	local function getGun()
@@ -1852,14 +1847,13 @@ function Functions.SetAutoXD(state)
 		end
 
 		local origin = root.Position + Vector3.new(0, 1.7, 0)
-		local direction = targetPart.Position - origin
 
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = {character}
 		params.IgnoreWater = true
 
-		local result = Workspace:Raycast(origin, direction, params)
+		local result = Workspace:Raycast(origin, targetPart.Position - origin, params)
 
 		return not result or result.Instance:IsDescendantOf(enemyCharacter)
 	end
@@ -1868,10 +1862,12 @@ function Functions.SetAutoXD(state)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
-		if not root then return nil end
+		if not root then
+			return nil
+		end
 
-		local closestHead = nil
-		local closestDist = Range
+		local bestHead = nil
+		local bestDist = Range
 
 		for _, player in ipairs(Players:GetPlayers()) do
 			if isEnemy(player) then
@@ -1883,34 +1879,18 @@ function Functions.SetAutoXD(state)
 				if char and hum and hum.Health > 0 and enemyRoot and head then
 					local dist = (root.Position - enemyRoot.Position).Magnitude
 
-					if dist <= closestDist and canSee(char, head) then
-						closestDist = dist
-						closestHead = head
+					if dist <= bestDist and canSee(char, head) then
+						bestDist = dist
+						bestHead = head
 					end
 				end
 			end
 		end
 
-		return closestHead
+		return bestHead
 	end
 
-	local function equipGun()
-		local character = LocalPlayer.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		local tool, equipped = getGun()
-
-		if not tool or not humanoid then
-			return nil
-		end
-
-		if not equipped then
-			humanoid:EquipTool(tool)
-		end
-
-		return tool
-	end
-
-	local function aimCharacter(target)
+	local function faceTarget(target)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
@@ -1923,50 +1903,53 @@ function Functions.SetAutoXD(state)
 		root.CFrame = CFrame.new(pos, look)
 	end
 
-	local function shoot(target)
-		if not target then return end
-
-		local tool = equipGun()
-		if not tool then return end
-
-		aimCharacter(target)
-
-		if isMobile and Camera then
-			local oldCFrame = Camera.CFrame
-			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-			pcall(function()
-				tool:Activate()
-			end)
-			task.defer(function()
-				if Camera then
-					Camera.CFrame = oldCFrame
-				end
-			end)
-		else
-			pcall(function()
-				tool:Activate()
-			end)
+	local function shoot()
+		if not Functions.States.AutoXD or Functions.AutoXDId ~= id then
+			return
 		end
+
+		local target = getTarget()
+		if not target then
+			return
+		end
+
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local tool, equipped = getGun()
+
+		if not character or not humanoid or not tool then
+			return
+		end
+
+		if not equipped then
+			humanoid:EquipTool(tool)
+		end
+
+		faceTarget(target)
+
+		task.defer(function()
+			if Functions.States.AutoXD and Functions.AutoXDId == id and tool and tool.Parent then
+				pcall(function()
+					tool:Activate()
+				end)
+			end
+		end)
 	end
 
 	if not state then
 		return
 	end
 
-	Functions.AutoXDThread = task.spawn(function()
-		while Functions.States.AutoXD and Functions.AutoXDId == id do
-			if inMatch() then
-				local target = getTarget()
-				if target then
-					shoot(target)
-				end
-			end
+	Functions.AutoXDInputConnection = UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
 
-			task.wait(CheckDelay)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			shoot()
 		end
 	end)
 end
-
 
 function Functions.SetOK(state)
 	Functions.States.OK = state
