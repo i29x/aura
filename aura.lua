@@ -1716,7 +1716,6 @@ function Functions.SetTeamHighlight(state)
 end
 
 
-
 function Functions.SetAutoXD(state)
 	Functions.States.AutoXD = state
 	Functions.AutoXDId = (Functions.AutoXDId or 0) + 1
@@ -1726,8 +1725,7 @@ function Functions.SetAutoXD(state)
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
 	local LocalPlayer = Players.LocalPlayer
-	local Camera = Workspace.CurrentCamera
-	local Range = 500
+	local Range = 1000
 	local debounce = false
 
 	if Functions.AutoXDInputConnection then
@@ -1811,7 +1809,7 @@ function Functions.SetAutoXD(state)
 			return LocalPlayer.TeamColor ~= player.TeamColor
 		end
 
-		return true
+		return false
 	end
 
 	local function getGun()
@@ -1868,8 +1866,9 @@ function Functions.SetAutoXD(state)
 		local character = LocalPlayer.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 
-		if not root then return nil end
+		if not root then return nil, nil end
 
+		local bestPlayer = nil
 		local bestPart = nil
 		local bestDist = Range
 
@@ -1879,32 +1878,82 @@ function Functions.SetAutoXD(state)
 				local hum = char and char:FindFirstChildOfClass("Humanoid")
 				local enemyRoot = char and char:FindFirstChild("HumanoidRootPart")
 				local head = char and char:FindFirstChild("Head")
+				local upper = char and (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or enemyRoot)
 
-				if char and hum and hum.Health > 0 and enemyRoot and head then
+				if char and hum and hum.Health > 0 and enemyRoot then
 					local dist = (root.Position - enemyRoot.Position).Magnitude
+					local part = head or upper
 
-					if dist <= bestDist and canSee(char, head) then
+					if part and dist <= bestDist and canSee(char, part) then
 						bestDist = dist
-						bestPart = head
+						bestPlayer = player
+						bestPart = part
 					end
 				end
 			end
 		end
 
-		return bestPart
+		return bestPlayer, bestPart
 	end
 
-	local function faceTarget(target)
-		local character = LocalPlayer.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
+	local function getRemotes(tool)
+		local remotes = {}
 
-		if not root or not target then
-			return
+		for _, v in ipairs(tool:GetDescendants()) do
+			if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+				local n = v.Name:lower()
+				if n:find("shoot") or n:find("fire") or n:find("hit") or n:find("damage") or n:find("gun") or n:find("remote") or n:find("event") then
+					table.insert(remotes, v)
+				end
+			end
 		end
 
-		local pos = root.Position
-		local look = Vector3.new(target.Position.X, pos.Y, target.Position.Z)
-		root.CFrame = CFrame.new(pos, look)
+		for _, v in ipairs(tool:GetDescendants()) do
+			if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and not table.find(remotes, v) then
+				table.insert(remotes, v)
+			end
+		end
+
+		return remotes
+	end
+
+	local function fireRemote(remote, targetPlayer, targetPart)
+		local pos = targetPart.Position
+		local cf = CFrame.new(pos)
+		local char = targetPlayer.Character
+		local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local origin = root and root.Position or pos
+		local direction = (pos - origin).Unit
+
+		if remote:IsA("RemoteEvent") then
+			pcall(function() remote:FireServer(targetPart) end)
+			pcall(function() remote:FireServer(targetPlayer) end)
+			pcall(function() remote:FireServer(pos) end)
+			pcall(function() remote:FireServer(cf) end)
+			pcall(function() remote:FireServer(pos, targetPart) end)
+			pcall(function() remote:FireServer(targetPart, pos) end)
+			pcall(function() remote:FireServer(targetPlayer, targetPart) end)
+			pcall(function() remote:FireServer(origin, pos) end)
+			pcall(function() remote:FireServer(origin, direction) end)
+			pcall(function() remote:FireServer({Hit = targetPart, Part = targetPart, Target = targetPlayer, Character = char, Position = pos, Pos = pos, CFrame = cf}) end)
+			return true
+		end
+
+		if remote:IsA("RemoteFunction") then
+			pcall(function() remote:InvokeServer(targetPart) end)
+			pcall(function() remote:InvokeServer(targetPlayer) end)
+			pcall(function() remote:InvokeServer(pos) end)
+			pcall(function() remote:InvokeServer(cf) end)
+			pcall(function() remote:InvokeServer(pos, targetPart) end)
+			pcall(function() remote:InvokeServer(targetPart, pos) end)
+			pcall(function() remote:InvokeServer(targetPlayer, targetPart) end)
+			pcall(function() remote:InvokeServer(origin, pos) end)
+			pcall(function() remote:InvokeServer(origin, direction) end)
+			pcall(function() remote:InvokeServer({Hit = targetPart, Part = targetPart, Target = targetPlayer, Character = char, Position = pos, Pos = pos, CFrame = cf}) end)
+			return true
+		end
+
+		return false
 	end
 
 	local function shootToTarget()
@@ -1914,8 +1963,8 @@ function Functions.SetAutoXD(state)
 
 		debounce = true
 
-		local target = getTarget()
-		if not target then
+		local targetPlayer, targetPart = getTarget()
+		if not targetPlayer or not targetPart then
 			debounce = false
 			return
 		end
@@ -1933,27 +1982,23 @@ function Functions.SetAutoXD(state)
 			humanoid:EquipTool(tool)
 		end
 
-		faceTarget(target)
+		local fired = false
+		local remotes = getRemotes(tool)
 
-		local oldCam = Camera and Camera.CFrame
-
-		if Camera then
-			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+		for _, remote in ipairs(remotes) do
+			if fireRemote(remote, targetPlayer, targetPart) then
+				fired = true
+			end
 		end
 
-		task.defer(function()
-			if Functions.States.AutoXD and Functions.AutoXDId == id and tool and tool.Parent then
-				pcall(function()
-					tool:Activate()
-				end)
-			end
-
-			task.defer(function()
-				if Camera and oldCam then
-					Camera.CFrame = oldCam
-				end
-				debounce = false
+		if not fired then
+			pcall(function()
+				tool:Activate()
 			end)
+		end
+
+		task.delay(0.15, function()
+			debounce = false
 		end)
 	end
 
