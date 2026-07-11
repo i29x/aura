@@ -263,14 +263,14 @@ local OptionConfig = {
 			Sections = {
 				{
 					Name = "Event Admin",
-					Description = "Admins only, don't abuse auto collect",
+					Description = "Admin utility controls",
 					Options = {
-						{Type = "toggle", Name = "Auto Collect", Description = "Collect event tridents only while you are in an active match", Callback = "SetAutoCollect", Default = false},
+						{Type = "toggle", Name = "Auto Pickup", Description = "Collect event tridents only while you are in an active match", Callback = "SetAutoCollect", Default = false},
 						{Type = "toggle", Name = "Auto Open Chest", Description = "Open at most one Atlantis chest per delay", Callback = "SetAutoOpenChest", Default = false},
 						{Type = "toggle", Name = "Auto Buy Event Chest", Description = "Buy at most one event chest per delay", Callback = "SetAutoBuyEventChest", Default = false},
 						{Type = "slider", Name = "Buy Chest Amount", Callback = "SetEventBuyAmount", Min = 1, Max = 25, Default = 1},
-						{Type = "textbox", Name = "Auto Open Delay", Description = "Seconds between auto open attempts, minimum 10", Placeholder = "15", ButtonText = "Set", Callback = "SetAutoOpenDelay"},
-						{Type = "textbox", Name = "Auto Buy Delay", Description = "Seconds between auto buy attempts, minimum 20", Placeholder = "30", ButtonText = "Set", Callback = "SetAutoBuyDelay"},
+						{Type = "textbox", Name = "Auto Open Delay", Description = "Seconds between auto open attempts, minimum 60", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoOpenDelay"},
+						{Type = "textbox", Name = "Auto Buy Delay", Description = "Seconds between auto buy attempts, minimum 90", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoBuyDelay"},
 						{Type = "button", Name = "Buy Event Chest", Description = "Buy selected amount manually with safe delay", Callback = "BuyEventChest"},
 						{Type = "button", Name = "Open Atlantis Chest", Description = "Open one Atlantis event chest manually", Callback = "OpenAtlantisChest"}
 					}
@@ -356,11 +356,11 @@ local OptionConfig = {
 						{Type = "button", Name = "Teleport Selected", Description = "Teleport to current selected circle", Callback = "TeleportSelectedMatch"},
 						{Type = "toggle", Name = "Auto Match Teleport", Description = "Teleport immediately outside matches, pause during matches, resume when they end", Callback = "SetAutoMatchTeleport", Default = false},
 						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Teleport User", Description = "1v1 only. Follow the opponent during the match. dont abuse it admin", Callback = "SetAutoTeleportUser", Default = false},
+						{Type = "toggle", Name = "Auto Teleport User", Description = "1v1 only. Follow the opponent during the match. admin movement option", Callback = "SetAutoTeleportUser", Default = false},
 						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Knife", Description = "1v1 only. Keep the knife equipped. dont abuse it admin", Callback = "SetAutoKnife", Default = false},
+						{Type = "toggle", Name = "Auto Knife", Description = "1v1 only. Keep the knife equipped. admin movement option", Callback = "SetAutoKnife", Default = false},
 						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Swing", Description = "1v1 only. Uses knife while held and falls back to gun if knife is missing. dont abuse it admin", Callback = "SetAutoSwing", Default = false}
+						{Type = "toggle", Name = "Auto Swing", Description = "1v1 only. Uses knife while held and falls back to gun if knife is missing. admin movement option", Callback = "SetAutoSwing", Default = false}
 					}
 				}
 			}
@@ -395,7 +395,7 @@ local OptionConfig = {
 						{Type = "button", Name = "Config Status", Description = "Check if axi_config file API and saved file work", Callback = "ConfigStatus", Half = true},
 						{Type = "toggle", Name = "Auto Load Config", Description = "Automatically load saved config when the panel starts", Callback = "SetAutoLoadConfig", Default = false},
 						{Type = "toggle", Name = "Auto Save Config", Description = "Automatically save config on a safe interval without spam", Callback = "SetAutoSaveConfig", Default = false},
-						{Type = "textbox", Name = "Auto Save Delay", Description = "Seconds between auto saves, minimum 30", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoSaveDelay"}
+						{Type = "textbox", Name = "Auto Save Delay", Description = "Seconds between auto saves, minimum 90", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoSaveDelay"}
 					}
 				},
 				{
@@ -403,9 +403,9 @@ local OptionConfig = {
 					Description = "Menu controls",
 					Options = {
 						{Type = "textbox", Name = "Menu Keybind", Description = "Put L, K, RightShift, etc", Placeholder = "L", ButtonText = "Set", Callback = "SetMenuKeybind"},
-						{Type = "toggle", Name = "Hide Logo", Description = "Hide the bubble and reopen with keybind", Callback = "SetHideLogo", Default = false},
+						{Type = "toggle", Name = "Hide Logo", Description = "Hide the small logo and reopen with keybind", Callback = "SetHideLogo", Default = false},
 						{Type = "toggle", Name = "Anti AFK", Description = "Keep the admin session active while idle", Callback = "SetAntiAFK", Default = false},
-						{Type = "toggle", Name = "Auto Close Match Stats", Description = "Automatically close match stats when shown without spamming REMOVE", Callback = "SetAutoCloseStats", Default = true},
+						{Type = "toggle", Name = "Auto Close Match Stats", Description = "Automatically close match stats when shown without spamming REMOVE", Callback = "SetAutoCloseStats", Default = false},
 						{Type = "button", Name = "Remove Game Stats", Description = "Fire REMOVE once with cooldown and hide stats", Callback = "CloseMatchStats"}
 					}
 				}
@@ -515,6 +515,19 @@ function Gui.Create(OptionConfig, Functions)
 
 	function Functions.Notify(title, text, duration)
 		if Functions.States and Functions.States.Notifications == false then return end
+
+		local notifyKey = tostring(title or "Axi") .. ":" .. tostring(text or "")
+		local now = os.clock()
+
+		if Functions.LastNotifyText == notifyKey
+			and Functions.LastNotifyClock
+			and now - Functions.LastNotifyClock < 10
+		then
+			return
+		end
+
+		Functions.LastNotifyText = notifyKey
+		Functions.LastNotifyClock = now
 
 		local card = Instance.new("Frame")
 		card.Name = "Notify"
@@ -2268,7 +2281,7 @@ function Gui.Create(OptionConfig, Functions)
 		then
 			Functions.GunBusy = true
 			Functions.UseDetectedGun()
-			task.delay(math.clamp(tonumber(Functions.Values.GunDelay) or 0.35, 0.25, 5), function()
+			task.delay(math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60), function()
 				Functions.GunBusy = false
 			end)
 		elseif input.KeyCode == Functions.KnifeKeybind
@@ -2279,7 +2292,7 @@ function Gui.Create(OptionConfig, Functions)
 		then
 			Functions.KnifeBusy = true
 			Functions.UseDetectedKnife()
-			task.delay(math.clamp(tonumber(Functions.Values.KnifeDelay) or 0.35, 0.25, 5), function()
+			task.delay(math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60), function()
 				Functions.KnifeBusy = false
 			end)
 		end
@@ -2346,7 +2359,7 @@ Functions.States = {
 	AutoCollect = false,
 	AutoOpenChest = false,
 	AutoBuyEventChest = false,
-	AutoCloseStats = true,
+	AutoCloseStats = false,
 	GunEnabled = false,
 	KnifeEnabled = false
 }
@@ -2368,8 +2381,8 @@ Functions.Values = {
 	OKRange = 1200,
 	OKCooldown = 0.25,
 	OKTargetPart = "Head",
-	GunDelay = 0.35,
-	KnifeDelay = 0.35,
+	GunDelay = 10,
+	KnifeDelay = 10,
 	TeamHighlightRed = 0,
 	TeamHighlightGreen = 120,
 	TeamHighlightBlue = 255,
@@ -2381,10 +2394,10 @@ Functions.Values = {
 	AbyssValue = 50,
 	HitboxSize = 8,
 	EventBuyAmount = 1,
-	AutoOpenDelay = 15,
-	AutoBuyDelay = 30,
-	ManualEventBuyDelay = 0.65,
-	ManualEventOpenDelay = 1.5,
+	AutoOpenDelay = 60,
+	AutoBuyDelay = 90,
+	ManualEventBuyDelay = 10,
+	ManualEventOpenDelay = 10,
 	AutoSaveDelay = 60
 }
 
@@ -3059,7 +3072,7 @@ function Functions.TeleportSelectedMatch(ignoreMatchCheck)
 		root.CFrame = targetCFrame
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
-		task.wait(0.05)
+		task.wait(0.08)
 	end
 
 	return true
@@ -3171,9 +3184,9 @@ function Functions.SetAutoTeleportUser(state)
 					end
 				end
 
-				task.wait(0.08)
+				task.wait(10)
 			else
-				task.wait(0.12)
+				task.wait(10)
 			end
 		end
 	end)
@@ -3295,12 +3308,12 @@ function Functions.SetAutoCollect(state)
 				do
 					if isLocalPlayerInMatch() and isEventTrident(model) then
 						if bringEventTrident(model) then
-							task.wait(0.08)
+							task.wait(10)
 						else
-							task.wait(0.15)
+							task.wait(10)
 						end
 					else
-						task.wait(0.15)
+						task.wait(10)
 					end
 				end
 			end)
@@ -3311,9 +3324,9 @@ function Functions.SetAutoCollect(state)
 		while Functions.States.AutoCollect and Functions.AutoCollectId == id do
 			if isLocalPlayerInMatch() then
 				Functions.CollectEventItems()
-				task.wait(0.12)
+				task.wait(10)
 			else
-				task.wait(0.2)
+				task.wait(10)
 			end
 		end
 	end)
@@ -3346,8 +3359,8 @@ end
 function Functions.BuyEventChest(silent, autoMode)
 	local now = os.clock()
 	local delayValue = autoMode
-		and math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 30, 20, 600)
-		or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 0.65, 0.5, 10)
+		and math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 90, 90, 600)
+		or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60)
 
 	if Functions.LastEventBuyAttempt
 		and now - Functions.LastEventBuyAttempt < delayValue
@@ -3380,16 +3393,14 @@ function Functions.BuyEventChest(silent, autoMode)
 	local successCount = 0
 
 	for _ = 1, amount do
-		local ok, result = pcall(function()
-			return buyRemote:InvokeServer(1)
-		end)
+		local ok, result = safeInvokeRemote(buyRemote, "BuyEventChest", autoMode and delayValue or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60), 1)
 
 		if ok and result == true then
 			successCount += 1
 		end
 
 		if amount > 1 then
-			task.wait(math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 0.65, 0.5, 10))
+			task.wait(math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60))
 		end
 	end
 
@@ -3518,8 +3529,8 @@ end
 function Functions.OpenAtlantisChest(silent, autoMode)
 	local now = os.clock()
 	local delayValue = autoMode
-		and math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 15, 10, 300)
-		or math.clamp(tonumber(Functions.Values.ManualEventOpenDelay) or 1.5, 1, 30)
+		and math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 60, 60, 300)
+		or math.clamp(tonumber(Functions.Values.ManualEventOpenDelay) or 10, 10, 60)
 
 	if Functions.LastEventOpenAttempt
 		and now - Functions.LastEventOpenAttempt < delayValue
@@ -3560,9 +3571,7 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 		return false
 	end
 
-	local ok, result, item = pcall(function()
-		return openRemote:InvokeServer(crateUuid)
-	end)
+	local ok, result, item = safeInvokeRemote(openRemote, "OpenAtlantisChest", delayValue, crateUuid)
 
 	local success = ok and result == true
 	Functions.EventOpenBusy = false
@@ -3721,7 +3730,7 @@ local function equipAdminTool(tool)
 			humanoid:EquipTool(tool)
 		end)
 
-		task.wait(0.16)
+		task.wait(0.22)
 	end
 
 	if tool.Parent ~= character then
@@ -3753,7 +3762,7 @@ local function sendKeyOnce(keyCode)
 	if VirtualInputManager then
 		local ok = pcall(function()
 			VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-			task.wait(0.05)
+			task.wait(0.08)
 			VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
 		end)
 
@@ -3770,7 +3779,7 @@ local function sendMouseClickOnce()
 		local location = UserInputService:GetMouseLocation()
 		local ok = pcall(function()
 			VirtualInputManager:SendMouseButtonEvent(location.X, location.Y, 0, true, game, 0)
-			task.wait(0.07)
+			task.wait(0.12)
 			VirtualInputManager:SendMouseButtonEvent(location.X, location.Y, 0, false, game, 0)
 		end)
 
@@ -3789,7 +3798,7 @@ local function useAdminTool(tool, actionType, unequipDelay)
 		return false
 	end
 
-	task.wait(0.12)
+	task.wait(0.25)
 
 	if actionType == "knife" then
 		if not sendKeyOnce(Enum.KeyCode.E) then
@@ -3811,6 +3820,51 @@ local function useAdminTool(tool, actionType, unequipDelay)
 
 	unequipAdminTool(tool, unequipDelay or 0.25)
 	return true
+end
+
+local function remoteCooldown(key, delayTime)
+	delayTime = math.max(tonumber(delayTime) or 10, 10)
+	Functions.RemoteCooldowns = Functions.RemoteCooldowns or {}
+
+	local now = os.clock()
+	local last = Functions.RemoteCooldowns[key]
+
+	if last and now - last < delayTime then
+		return false
+	end
+
+	Functions.RemoteCooldowns[key] = now
+	return true
+end
+
+local function safeInvokeRemote(remote, key, delayTime, ...)
+	if not remoteCooldown(key, delayTime) then
+		return false
+	end
+
+	local args = {...}
+	local ok, result1, result2 = pcall(function()
+		return remote:InvokeServer(table.unpack(args))
+	end)
+
+	if not ok then
+		return false
+	end
+
+	return true, result1, result2
+end
+
+local function safeFireRemote(remote, key, delayTime, ...)
+	if not remoteCooldown(key, delayTime) then
+		return false
+	end
+
+	local args = {...}
+	local ok = pcall(function()
+		remote:FireServer(table.unpack(args))
+	end)
+
+	return ok == true
 end
 
 local function parseAdminKey(text)
@@ -4362,11 +4416,11 @@ function Functions.LoadConfig(silent)
 
 	if type(data.Values) == "table" then
 		if tonumber(data.Values.GunDelay) then
-			Functions.Values.GunDelay = math.clamp(tonumber(data.Values.GunDelay), 0.25, 5)
+			Functions.Values.GunDelay = math.clamp(tonumber(data.Values.GunDelay), 10, 60)
 		end
 
 		if tonumber(data.Values.KnifeDelay) then
-			Functions.Values.KnifeDelay = math.clamp(tonumber(data.Values.KnifeDelay), 0.25, 5)
+			Functions.Values.KnifeDelay = math.clamp(tonumber(data.Values.KnifeDelay), 10, 60)
 		end
 
 		if tonumber(data.Values.OKCooldown) then
@@ -4386,11 +4440,11 @@ function Functions.LoadConfig(silent)
 		end
 
 		if tonumber(data.Values.AutoOpenDelay) then
-			Functions.Values.AutoOpenDelay = math.clamp(tonumber(data.Values.AutoOpenDelay), 10, 300)
+			Functions.Values.AutoOpenDelay = math.clamp(tonumber(data.Values.AutoOpenDelay), 60, 300)
 		end
 
 		if tonumber(data.Values.AutoBuyDelay) then
-			Functions.Values.AutoBuyDelay = math.clamp(tonumber(data.Values.AutoBuyDelay), 20, 600)
+			Functions.Values.AutoBuyDelay = math.clamp(tonumber(data.Values.AutoBuyDelay), 90, 600)
 		end
 
 		if tonumber(data.Values.AutoSaveDelay) then
@@ -4577,7 +4631,7 @@ function Functions.SetAutoSaveDelay(text)
 end
 
 function Functions.SetGunDelay(text)
-	Functions.Values.GunDelay = parseDelayText(text, Functions.Values.GunDelay or 0.35, 0.25, 5)
+	Functions.Values.GunDelay = parseDelayText(text, Functions.Values.GunDelay or 10, 10, 60)
 
 	if Functions.Notify then
 		Functions.Notify("Axi", "Gun delay set to " .. tostring(Functions.Values.GunDelay), 1.5)
@@ -4591,7 +4645,7 @@ function Functions.SetGunDelay(text)
 end
 
 function Functions.SetKnifeDelay(text)
-	Functions.Values.KnifeDelay = parseDelayText(text, Functions.Values.KnifeDelay or 0.35, 0.25, 5)
+	Functions.Values.KnifeDelay = parseDelayText(text, Functions.Values.KnifeDelay or 10, 10, 60)
 
 	if Functions.Notify then
 		Functions.Notify("Axi", "Knife delay set to " .. tostring(Functions.Values.KnifeDelay), 1.5)
@@ -4619,7 +4673,7 @@ function Functions.SetOKDelay(text)
 end
 
 function Functions.SetAutoOpenDelay(text)
-	Functions.Values.AutoOpenDelay = parseDelayText(text, Functions.Values.AutoOpenDelay or 15, 10, 300)
+	Functions.Values.AutoOpenDelay = parseDelayText(text, Functions.Values.AutoOpenDelay or 60, 60, 300)
 
 	if Functions.Notify then
 		Functions.Notify("Axi", "Auto open delay set to " .. tostring(Functions.Values.AutoOpenDelay), 1.5)
@@ -4633,7 +4687,7 @@ function Functions.SetAutoOpenDelay(text)
 end
 
 function Functions.SetAutoBuyDelay(text)
-	Functions.Values.AutoBuyDelay = parseDelayText(text, Functions.Values.AutoBuyDelay or 30, 20, 600)
+	Functions.Values.AutoBuyDelay = parseDelayText(text, Functions.Values.AutoBuyDelay or 90, 90, 600)
 
 	if Functions.Notify then
 		Functions.Notify("Axi", "Auto buy delay set to " .. tostring(Functions.Values.AutoBuyDelay), 1.5)
@@ -4684,7 +4738,7 @@ function Functions.UseDetectedGun()
 	end
 
 	local now = os.clock()
-	local delayValue = math.clamp(tonumber(Functions.Values.GunDelay) or 0.35, 0.25, 5)
+	local delayValue = math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60)
 
 	if Functions.LastManualGunUse
 		and now - Functions.LastManualGunUse < delayValue
@@ -4699,7 +4753,7 @@ function Functions.UseDetectedGun()
 	end
 
 	Functions.LastManualGunUse = now
-	return useAdminTool(gun, "gun", 0.28)
+	return useAdminTool(gun, "gun", 0.45)
 end
 
 function Functions.UseDetectedKnife()
@@ -4708,7 +4762,7 @@ function Functions.UseDetectedKnife()
 	end
 
 	local now = os.clock()
-	local delayValue = math.clamp(tonumber(Functions.Values.KnifeDelay) or 0.35, 0.25, 5)
+	local delayValue = math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60)
 
 	if Functions.LastManualKnifeUse
 		and now - Functions.LastManualKnifeUse < delayValue
@@ -4723,7 +4777,7 @@ function Functions.UseDetectedKnife()
 	end
 
 	Functions.LastManualKnifeUse = now
-	return useAdminTool(knife, "knife", 0.28)
+	return useAdminTool(knife, "knife", 0.45)
 end
 
 local function findKnifeForAutoEquip()
@@ -4835,7 +4889,7 @@ function Functions.SetAutoKnife(state)
 				equipKnifeForAuto()
 				task.wait(0.1)
 			else
-				task.wait(0.15)
+				task.wait(10)
 			end
 		end
 	end)
@@ -4868,25 +4922,25 @@ function Functions.SetAutoSwing(state)
 						knife:Activate()
 					end)
 
-					task.wait(math.clamp(tonumber(Functions.Values.KnifeDelay) or 0.35, 0.25, 5))
+					task.wait(math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60))
 				else
 					local now = os.clock()
 
-					if now - lastGunUse >= math.clamp(tonumber(Functions.Values.GunDelay) or 0.35, 0.25, 5) then
+					if now - lastGunUse >= math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60) then
 						local gun = detectAdminGun()
 
 						if gun then
 							lastGunUse = now
 							pcall(function()
-								useAdminTool(gun, "gun", 0.25)
+								useAdminTool(gun, "gun", 0.45)
 							end)
 						end
 					end
 
-					task.wait(0.12)
+					task.wait(10)
 				end
 			else
-				task.wait(0.05)
+				task.wait(0.08)
 			end
 		end
 	end)
@@ -4920,7 +4974,7 @@ function Functions.CloseMatchStats()
 	local now = os.clock()
 
 	if Functions.LastMatchStatsRemove
-		and now - Functions.LastMatchStatsRemove < 2
+		and now - Functions.LastMatchStatsRemove < 10
 	then
 		local gameStats = getMatchStatsGui()
 
@@ -4933,7 +4987,7 @@ function Functions.CloseMatchStats()
 
 	local gameStats = getMatchStatsGui()
 
-	if not gameStats then
+	if not gameStats or gameStats.Visible == false then
 		return false
 	end
 
@@ -4946,6 +5000,11 @@ function Functions.CloseMatchStats()
 			Functions.Notify("Axi", "Match cleanup remote missing", 2)
 		end
 
+		return false
+	end
+
+	if not remoteCooldown("MatchStatsRemove", 10) then
+		gameStats.Visible = false
 		return false
 	end
 
@@ -4971,15 +5030,21 @@ local function bindMatchStatsAutoClose()
 	disconnectMatchStatsConnections()
 
 	local function handleStatsShown()
+		local gameStats = getMatchStatsGui()
+
+		if not gameStats or gameStats.Visible == false then
+			return
+		end
+
 		if Functions.States.AutoMatchTeleport then
 			local now = os.clock()
 
 			if not Functions.LastStatsTeleport
-				or now - Functions.LastStatsTeleport >= 2
+				or now - Functions.LastStatsTeleport >= 10
 			then
 				Functions.LastStatsTeleport = now
 
-				task.delay(0.3, function()
+				task.delay(2, function()
 					if Functions.States.AutoMatchTeleport then
 						Functions.TeleportSelectedMatch()
 					end
@@ -4991,10 +5056,10 @@ local function bindMatchStatsAutoClose()
 			local now = os.clock()
 
 			if not Functions.LastAutoCloseStats
-				or now - Functions.LastAutoCloseStats >= 2
+				or now - Functions.LastAutoCloseStats >= 10
 			then
 				Functions.LastAutoCloseStats = now
-				task.defer(Functions.CloseMatchStats)
+				task.delay(2, Functions.CloseMatchStats)
 			end
 		end
 	end
@@ -5024,7 +5089,7 @@ local function bindMatchStatsAutoClose()
 
 	Functions.MatchStatsConnections.GuiAdded = pg.DescendantAdded:Connect(function(obj)
 		if obj.Name == "GameStats" and obj:IsA("GuiObject") then
-			task.defer(function()
+			task.delay(0.35, function()
 				bindMatchStatsAutoClose()
 			end)
 		end
@@ -5200,7 +5265,7 @@ function Functions.SetOK(state)
 
 		local now = os.clock()
 		local okDelay = math.clamp(tonumber(Functions.Values.OKCooldown) or 0.25, 0.08, 5)
-		local gunDelay = math.clamp(tonumber(Functions.Values.GunDelay) or 0.35, 0.25, 5)
+		local gunDelay = math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60)
 		local cooldown = math.max(okDelay, gunDelay)
 
 		if now - lastShot < cooldown then
@@ -5225,7 +5290,7 @@ function Functions.SetOK(state)
 				humanoid:EquipTool(gun)
 			end)
 
-			task.wait(0.05)
+			task.wait(0.08)
 		end
 
 		if gun.Parent ~= character then
@@ -5440,7 +5505,7 @@ function Functions.StartHighlightRainbow()
 			if Functions.States.TeamRainbow then Functions.Values.TeamHighlightColor = color end
 			if Functions.States.EnemyRainbow then Functions.Values.EnemyHighlightColor = color end
 			Functions.UpdateHighlightColors()
-			task.wait(0.05)
+			task.wait(0.08)
 		end
 	end)
 end
@@ -5514,14 +5579,14 @@ function Functions.SetTeamHighlight(state)
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= lp then
 			Functions.TeamHighlightConnections[player] = player.CharacterAdded:Connect(function()
-				task.wait(0.5)
+				task.wait(10)
 				applyPlayer(player)
 			end)
 		end
 	end
 	Functions.TeamHighlightConnections.PlayerAdded = Players.PlayerAdded:Connect(function(player)
 		Functions.TeamHighlightConnections[player] = player.CharacterAdded:Connect(function()
-			task.wait(0.5)
+			task.wait(10)
 			applyPlayer(player)
 		end)
 	end)
@@ -5533,7 +5598,7 @@ function Functions.SetTeamHighlight(state)
 	refresh()
 	task.spawn(function()
 		while Functions.States.TeamHighlight and Functions.TeamHighlightId == id do
-			task.wait(2)
+			task.wait(10)
 			refresh()
 		end
 	end)
@@ -5981,7 +6046,7 @@ function Functions.SetHitboxExtender(state)
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= lp then
 			Functions.HitboxConnections[player] = player.CharacterAdded:Connect(function()
-				task.wait(0.5)
+				task.wait(10)
 				Functions.ApplyHitboxPlayer(player)
 			end)
 		end
@@ -5989,7 +6054,7 @@ function Functions.SetHitboxExtender(state)
 
 	Functions.HitboxConnections.PlayerAdded = Players.PlayerAdded:Connect(function(player)
 		Functions.HitboxConnections[player] = player.CharacterAdded:Connect(function()
-			task.wait(0.5)
+			task.wait(10)
 			Functions.ApplyHitboxPlayer(player)
 		end)
 	end)
@@ -6317,13 +6382,13 @@ end)
 bindMatchStatsAutoClose()
 
 task.spawn(function()
-	while task.wait(0.5) do
+	while task.wait(10) do
 		local now = os.clock()
 
 		if Functions.States.AutoOpenChest
 			and not Functions.EventOpenBusy
 		then
-			local openDelay = math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 15, 10, 300)
+			local openDelay = math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 60, 60, 300)
 
 			if not Functions.LastAutoOpenChestCheck
 				or now - Functions.LastAutoOpenChestCheck >= openDelay
@@ -6338,7 +6403,7 @@ task.spawn(function()
 		if Functions.States.AutoBuyEventChest
 			and not Functions.EventBuyBusy
 		then
-			local buyDelay = math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 30, 20, 600)
+			local buyDelay = math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 90, 90, 600)
 
 			if not Functions.LastAutoBuyChestCheck
 				or now - Functions.LastAutoBuyChestCheck >= buyDelay
