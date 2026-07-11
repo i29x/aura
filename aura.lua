@@ -3411,10 +3411,9 @@ local function safeFireRemote(remote, key, delayTime, ...)
 end
 
 
-function Functions.BuyEventChest(silent, autoMode)
+function Functions.BuyEventChest(silent)
 	local now = os.clock()
-	local delayValue = autoMode
-		or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60)
+	local delayValue = math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60)
 
 	if Functions.LastEventBuyAttempt
 		and now - Functions.LastEventBuyAttempt < delayValue
@@ -3448,18 +3447,18 @@ function Functions.BuyEventChest(silent, autoMode)
 		return false
 	end
 
-	local amount = autoMode and 1 or math.clamp(Functions.Values.EventBuyAmount or 1, 1, 25)
+	local amount = math.clamp(Functions.Values.EventBuyAmount or 1, 1, 25)
 	local successCount = 0
 
 	for _ = 1, amount do
-		local ok, result = safeInvokeRemote(buyRemote, cooldownKey, autoMode and delayValue or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60), 1)
+		local ok, result = safeInvokeRemote(buyRemote, "ManualBuyEventChest", delayValue, 1)
 
 		if ok and result == true then
 			successCount += 1
 		end
 
 		if amount > 1 then
-			task.wait(math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60))
+			task.wait(delayValue)
 		end
 	end
 
@@ -3476,16 +3475,6 @@ function Functions.BuyEventChest(silent, autoMode)
 	return successCount > 0
 end
 
-	if Functions.SafeStartupLocked and state == true then
-		return
-	end
-
-
-	if state then
-		Functions.LastAutoBuyChestCheck = os.clock()
-		Functions.LastEventBuyAttempt = Functions.LastEventBuyAttempt or 0
-	end
-end
 
 local function findAtlantisCrateInCrateTable(crateTable)
 	if type(crateTable) ~= "table" then
@@ -3587,10 +3576,9 @@ local function findAtlantisCrateId()
 	return nil
 end
 
-function Functions.OpenAtlantisChest(silent, autoMode)
+function Functions.OpenAtlantisChest(silent)
 	local now = os.clock()
-	local delayValue = autoMode
-		or math.clamp(tonumber(Functions.Values.ManualEventOpenDelay) or 10, 10, 60)
+	local delayValue = math.clamp(tonumber(Functions.Values.ManualEventOpenDelay) or 10, 10, 60)
 
 	if Functions.LastEventOpenAttempt
 		and now - Functions.LastEventOpenAttempt < delayValue
@@ -3636,8 +3624,7 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 		return false
 	end
 
-	local cooldownKey = autoMode and "AutoOpenAtlantisChest" or "ManualOpenAtlantisChest"
-	local ok, result, item = safeInvokeRemote(openRemote, cooldownKey, delayValue, crateUuid)
+	local ok, result, item = safeInvokeRemote(openRemote, "ManualOpenAtlantisChest", delayValue, crateUuid)
 
 	local success = ok and result == true
 	Functions.EventOpenBusy = false
@@ -3653,15 +3640,6 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 	return success, item
 end
 
-	if Functions.SafeStartupLocked and state == true then
-		return
-	end
-
-
-	if state then
-		Functions.LastEventOpenAttempt = Functions.LastEventOpenAttempt or 0
-	end
-end
 
 local function getAdminTools()
 	local result = {}
@@ -4452,9 +4430,7 @@ function Functions.LoadConfig(silent)
 			Functions.Values.EventBuyAmount = math.clamp(math.floor(tonumber(data.Values.EventBuyAmount)), 1, 25)
 		end
 
-		end
 
-		end
 
 		if tonumber(data.Values.AutoSaveDelay) then
 			Functions.Values.AutoSaveDelay = math.clamp(tonumber(data.Values.AutoSaveDelay), 30, 600)
@@ -4569,13 +4545,7 @@ function Functions.LoadConfig(silent)
 			end
 		end
 
-			else
-			end
-		end
 
-			else
-			end
-		end
 	end
 
 	Functions.LastLoadedConfigData = data
@@ -4760,26 +4730,6 @@ function Functions.SetOKDelay(text)
 end
 
 
-	if Functions.Notify then
-	end
-
-	if not Functions.ConfigLoading then
-		task.defer(function()
-			Functions.SaveConfig(true, true)
-		end)
-	end
-end
-
-
-	if Functions.Notify then
-	end
-
-	if not Functions.ConfigLoading then
-		task.defer(function()
-			Functions.SaveConfig(true, true)
-		end)
-	end
-end
 
 function Functions.SetGunKeybind(text)
 	text = tostring(text or ""):gsub("%s+", "")
@@ -6482,24 +6432,6 @@ end)
 
 bindMatchStatsAutoClose()
 
-task.spawn(function()
-	while task.wait(10) do
-		if Functions.States.AutoCloseStats then
-			local gameStats = getMatchStatsGui()
-
-			if gameStats and gameStats.Visible == true then
-				local now = os.clock()
-
-				if not Functions.LastAutoCloseStats
-					or now - Functions.LastAutoCloseStats >= 10
-				then
-					Functions.LastAutoCloseStats = now
-					Functions.CloseMatchStats()
-				end
-			end
-		end
-	end
-end)
 
 Gui.Create(OptionConfig, Functions)
 Functions.AutoLoadConfigOnStart()
