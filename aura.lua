@@ -262,11 +262,7 @@ local OptionConfig = {
 					Description = "Admin utility controls",
 					Options = {
 						{Type = "toggle", Name = "Auto Pickup", Description = "Collect event tridents only while you are in an active match", Callback = "SetAutoCollect", Default = false},
-						{Type = "toggle", Name = "Auto Open Chest", Description = "Open at most one Atlantis chest per delay", Callback = "SetAutoOpenChest", Default = false},
-						{Type = "toggle", Name = "Auto Buy Event Chest", Description = "Buy at most one event chest per delay", Callback = "SetAutoBuyEventChest", Default = false},
 						{Type = "slider", Name = "Buy Chest Amount", Callback = "SetEventBuyAmount", Min = 1, Max = 25, Default = 1},
-						{Type = "textbox", Name = "Auto Open Delay", Description = "Seconds between auto open attempts, minimum 60", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoOpenDelay"},
-						{Type = "textbox", Name = "Auto Buy Delay", Description = "Seconds between auto buy attempts, minimum 90", Placeholder = "60", ButtonText = "Set", Callback = "SetAutoBuyDelay"},
 						{Type = "button", Name = "Buy Event Chest", Description = "Buy selected amount manually with safe delay", Callback = "BuyEventChest"},
 						{Type = "button", Name = "Open Atlantis Chest", Description = "Open one Atlantis event chest manually", Callback = "OpenAtlantisChest"}
 					}
@@ -2226,8 +2222,6 @@ Functions.States = {
 	AutoLoadConfig = false,
 	AutoSaveConfig = false,
 	AutoCollect = false,
-	AutoOpenChest = false,
-	AutoBuyEventChest = false,
 	AutoCloseStats = false,
 	GunEnabled = false,
 	KnifeEnabled = false
@@ -2263,8 +2257,6 @@ Functions.Values = {
 	AbyssValue = 50,
 	HitboxSize = 8,
 	EventBuyAmount = 1,
-	AutoOpenDelay = 60,
-	AutoBuyDelay = 90,
 	ManualEventBuyDelay = 10,
 	ManualEventOpenDelay = 10,
 	AutoSaveDelay = 60
@@ -3251,7 +3243,6 @@ function Functions.BuyEventChest(silent, autoMode)
 	local successCount = 0
 
 	for _ = 1, amount do
-		local cooldownKey = autoMode and "AutoBuyEventChest" or "ManualBuyEventChest"
 		local ok, result = safeInvokeRemote(buyRemote, cooldownKey, autoMode and delayValue or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60), 1)
 
 		if ok and result == true then
@@ -3276,19 +3267,6 @@ function Functions.BuyEventChest(silent, autoMode)
 	return successCount > 0
 end
 
-function Functions.SetAutoBuyEventChest(state)
-	if Functions.SafeStartupLocked and state == true then
-		Functions.States.AutoBuyEventChest = false
-		return
-	end
-
-	Functions.States.AutoBuyEventChest = state
-
-	if state then
-		Functions.LastAutoBuyChestCheck = os.clock()
-		Functions.LastEventBuyAttempt = Functions.LastEventBuyAttempt or 0
-	end
-end
 
 local function findAtlantisCrateInCrateTable(crateTable)
 	if type(crateTable) ~= "table" then
@@ -3457,19 +3435,6 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 	return success, item
 end
 
-function Functions.SetAutoOpenChest(state)
-	if Functions.SafeStartupLocked and state == true then
-		Functions.States.AutoOpenChest = false
-		return
-	end
-
-	Functions.States.AutoOpenChest = state
-
-	if state then
-		Functions.LastAutoOpenChestCheck = os.clock()
-		Functions.LastEventOpenAttempt = Functions.LastEventOpenAttempt or 0
-	end
-end
 
 local function getAdminTools()
 	local result = {}
@@ -3937,8 +3902,6 @@ local function getConfigData()
 			AutoKnife = Functions.States.AutoKnife,
 			AutoSwing = Functions.States.AutoSwing,
 			AutoCollect = Functions.States.AutoCollect,
-			AutoOpenChest = Functions.States.AutoOpenChest,
-			AutoBuyEventChest = Functions.States.AutoBuyEventChest
 		},
 		Values = {
 			GunDelay = Functions.Values.GunDelay,
@@ -3947,8 +3910,6 @@ local function getConfigData()
 			OKFOV = Functions.Values.OKFOV,
 			OKRange = Functions.Values.OKRange,
 			EventBuyAmount = Functions.Values.EventBuyAmount,
-			AutoOpenDelay = Functions.Values.AutoOpenDelay,
-			AutoBuyDelay = Functions.Values.AutoBuyDelay,
 			AutoSaveDelay = Functions.Values.AutoSaveDelay
 		},
 		Match = {
@@ -4102,8 +4063,6 @@ function Functions.ApplyConfigToUI(data)
 		setControl("SetAutoTeleportUser", data.States.AutoTeleportUser)
 		setControl("SetAutoKnife", data.States.AutoKnife)
 		setControl("SetAutoSwing", data.States.AutoSwing)
-		setControl("SetAutoOpenChest", data.States.AutoOpenChest)
-		setControl("SetAutoBuyEventChest", data.States.AutoBuyEventChest)
 		setControl("SetAutoCollect", data.States.AutoCollect)
 	end
 
@@ -4111,8 +4070,6 @@ function Functions.ApplyConfigToUI(data)
 		setControl("SetGunDelay", data.Values.GunDelay)
 		setControl("SetKnifeDelay", data.Values.KnifeDelay)
 		setControl("SetOKDelay", data.Values.OKCooldown)
-		setControl("SetAutoOpenDelay", data.Values.AutoOpenDelay)
-		setControl("SetAutoBuyDelay", data.Values.AutoBuyDelay)
 		setControl("SetAutoSaveDelay", data.Values.AutoSaveDelay)
 
 	end
@@ -4218,8 +4175,6 @@ function Functions.LoadConfig(silent)
 		for key, value in pairs(data.UIConfig) do
 			local activeToggle =
 				key == "SetAutoCollect"
-				or key == "SetAutoOpenChest"
-				or key == "SetAutoBuyEventChest"
 				or key == "SetAutoMatchTeleport"
 				or key == "SetAutoTeleportUser"
 				or key == "SetAutoKnife"
@@ -4270,13 +4225,7 @@ function Functions.LoadConfig(silent)
 			Functions.Values.EventBuyAmount = math.clamp(math.floor(tonumber(data.Values.EventBuyAmount)), 1, 25)
 		end
 
-		if tonumber(data.Values.AutoOpenDelay) then
-			Functions.Values.AutoOpenDelay = math.clamp(tonumber(data.Values.AutoOpenDelay), 60, 300)
-		end
 
-		if tonumber(data.Values.AutoBuyDelay) then
-			Functions.Values.AutoBuyDelay = math.clamp(tonumber(data.Values.AutoBuyDelay), 90, 600)
-		end
 
 		if tonumber(data.Values.AutoSaveDelay) then
 			Functions.Values.AutoSaveDelay = math.clamp(tonumber(data.Values.AutoSaveDelay), 30, 600)
@@ -4355,21 +4304,7 @@ function Functions.LoadConfig(silent)
 			end
 		end
 
-		if type(data.States.AutoOpenChest) == "boolean" then
-			if data.States.AutoOpenChest == true then
-				safeCall("SetAutoOpenChest", true)
-			else
-				Functions.States.AutoOpenChest = false
-			end
-		end
 
-		if type(data.States.AutoBuyEventChest) == "boolean" then
-			if data.States.AutoBuyEventChest == true then
-				safeCall("SetAutoBuyEventChest", true)
-			else
-				Functions.States.AutoBuyEventChest = false
-			end
-		end
 	end
 
 	Functions.LastLoadedConfigData = data
@@ -4529,33 +4464,7 @@ function Functions.SetOKDelay(text)
 	end
 end
 
-function Functions.SetAutoOpenDelay(text)
-	Functions.Values.AutoOpenDelay = parseDelayText(text, Functions.Values.AutoOpenDelay or 60, 60, 300)
 
-	if Functions.Notify then
-		Functions.Notify("Axi", "Auto open delay set to " .. tostring(Functions.Values.AutoOpenDelay), 1.5)
-	end
-
-	if not Functions.ConfigLoading then
-		task.defer(function()
-			Functions.SaveConfig(true, true)
-		end)
-	end
-end
-
-function Functions.SetAutoBuyDelay(text)
-	Functions.Values.AutoBuyDelay = parseDelayText(text, Functions.Values.AutoBuyDelay or 90, 90, 600)
-
-	if Functions.Notify then
-		Functions.Notify("Axi", "Auto buy delay set to " .. tostring(Functions.Values.AutoBuyDelay), 1.5)
-	end
-
-	if not Functions.ConfigLoading then
-		task.defer(function()
-			Functions.SaveConfig(true, true)
-		end)
-	end
-end
 
 function Functions.SetGunKeybind(text)
 	text = tostring(text or ""):gsub("%s+", "")
@@ -6147,35 +6056,18 @@ bindMatchStatsAutoClose()
 
 task.spawn(function()
 	while task.wait(10) do
-		local now = os.clock()
+		if Functions.States.AutoCloseStats then
+			local gameStats = getMatchStatsGui()
 
-		if Functions.States.AutoOpenChest
-			and not Functions.EventOpenBusy
-		then
-			local openDelay = math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 60, 60, 300)
+			if gameStats and gameStats.Visible == true then
+				local now = os.clock()
 
-			if not Functions.LastAutoOpenChestCheck
-				or now - Functions.LastAutoOpenChestCheck >= openDelay
-			then
-				Functions.LastAutoOpenChestCheck = now
-				task.spawn(function()
-					Functions.OpenAtlantisChest(true, true)
-				end)
-			end
-		end
-
-		if Functions.States.AutoBuyEventChest
-			and not Functions.EventBuyBusy
-		then
-			local buyDelay = math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 90, 90, 600)
-
-			if not Functions.LastAutoBuyChestCheck
-				or now - Functions.LastAutoBuyChestCheck >= buyDelay
-			then
-				Functions.LastAutoBuyChestCheck = now
-				task.spawn(function()
-					Functions.BuyEventChest(true, true)
-				end)
+				if not Functions.LastAutoCloseStats
+					or now - Functions.LastAutoCloseStats >= 10
+				then
+					Functions.LastAutoCloseStats = now
+					Functions.CloseMatchStats()
+				end
 			end
 		end
 	end
