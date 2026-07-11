@@ -3356,6 +3356,52 @@ function Functions.SetEventBuyAmount(value)
 	Functions.Values.EventBuyAmount = math.clamp(value or 1, 1, 25)
 end
 
+local function remoteCooldown(key, delayTime)
+	delayTime = math.max(tonumber(delayTime) or 10, 10)
+	Functions.RemoteCooldowns = Functions.RemoteCooldowns or {}
+
+	local now = os.clock()
+	local last = Functions.RemoteCooldowns[key]
+
+	if last and now - last < delayTime then
+		return false
+	end
+
+	Functions.RemoteCooldowns[key] = now
+	return true
+end
+
+local function safeInvokeRemote(remote, key, delayTime, ...)
+	if not remoteCooldown(key, delayTime) then
+		return false
+	end
+
+	local args = {...}
+	local ok, result1, result2 = pcall(function()
+		return remote:InvokeServer(table.unpack(args))
+	end)
+
+	if not ok then
+		return false
+	end
+
+	return true, result1, result2
+end
+
+local function safeFireRemote(remote, key, delayTime, ...)
+	if not remoteCooldown(key, delayTime) then
+		return false
+	end
+
+	local args = {...}
+	local ok = pcall(function()
+		remote:FireServer(table.unpack(args))
+	end)
+
+	return ok == true
+end
+
+
 function Functions.BuyEventChest(silent, autoMode)
 	local now = os.clock()
 	local delayValue = autoMode
@@ -3365,6 +3411,11 @@ function Functions.BuyEventChest(silent, autoMode)
 	if Functions.LastEventBuyAttempt
 		and now - Functions.LastEventBuyAttempt < delayValue
 	then
+		if not silent and Functions.Notify then
+			local left = math.ceil(delayValue - (now - Functions.LastEventBuyAttempt))
+			Functions.Notify("Axi", "Buy cooldown: " .. tostring(left) .. "s", 2)
+		end
+
 		return false
 	end
 
@@ -3393,7 +3444,8 @@ function Functions.BuyEventChest(silent, autoMode)
 	local successCount = 0
 
 	for _ = 1, amount do
-		local ok, result = safeInvokeRemote(buyRemote, "BuyEventChest", autoMode and delayValue or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60), 1)
+		local cooldownKey = autoMode and "AutoBuyEventChest" or "ManualBuyEventChest"
+		local ok, result = safeInvokeRemote(buyRemote, cooldownKey, autoMode and delayValue or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60), 1)
 
 		if ok and result == true then
 			successCount += 1
@@ -3535,6 +3587,11 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 	if Functions.LastEventOpenAttempt
 		and now - Functions.LastEventOpenAttempt < delayValue
 	then
+		if not silent and Functions.Notify then
+			local left = math.ceil(delayValue - (now - Functions.LastEventOpenAttempt))
+			Functions.Notify("Axi", "Open cooldown: " .. tostring(left) .. "s", 2)
+		end
+
 		return false
 	end
 
@@ -3571,7 +3628,8 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 		return false
 	end
 
-	local ok, result, item = safeInvokeRemote(openRemote, "OpenAtlantisChest", delayValue, crateUuid)
+	local cooldownKey = autoMode and "AutoOpenAtlantisChest" or "ManualOpenAtlantisChest"
+	local ok, result, item = safeInvokeRemote(openRemote, cooldownKey, delayValue, crateUuid)
 
 	local success = ok and result == true
 	Functions.EventOpenBusy = false
@@ -3820,51 +3878,6 @@ local function useAdminTool(tool, actionType, unequipDelay)
 
 	unequipAdminTool(tool, unequipDelay or 0.25)
 	return true
-end
-
-local function remoteCooldown(key, delayTime)
-	delayTime = math.max(tonumber(delayTime) or 10, 10)
-	Functions.RemoteCooldowns = Functions.RemoteCooldowns or {}
-
-	local now = os.clock()
-	local last = Functions.RemoteCooldowns[key]
-
-	if last and now - last < delayTime then
-		return false
-	end
-
-	Functions.RemoteCooldowns[key] = now
-	return true
-end
-
-local function safeInvokeRemote(remote, key, delayTime, ...)
-	if not remoteCooldown(key, delayTime) then
-		return false
-	end
-
-	local args = {...}
-	local ok, result1, result2 = pcall(function()
-		return remote:InvokeServer(table.unpack(args))
-	end)
-
-	if not ok then
-		return false
-	end
-
-	return true, result1, result2
-end
-
-local function safeFireRemote(remote, key, delayTime, ...)
-	if not remoteCooldown(key, delayTime) then
-		return false
-	end
-
-	local args = {...}
-	local ok = pcall(function()
-		remote:FireServer(table.unpack(args))
-	end)
-
-	return ok == true
 end
 
 local function parseAdminKey(text)
@@ -6419,3 +6432,4 @@ end)
 
 Gui.Create(OptionConfig, Functions)
 Functions.AutoLoadConfigOnStart()
+
