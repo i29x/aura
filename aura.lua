@@ -9,6 +9,10 @@ local VirtualUser = game:GetService("VirtualUser")
 local HttpService = game:GetService("HttpService")
 local VirtualInputManager = nil
 
+pcall(function()
+	VirtualInputManager = game:GetService("VirtualInputManager")
+end)
+
 local lp = Players.LocalPlayer
 local pg = lp:WaitForChild("PlayerGui")
 
@@ -269,8 +273,94 @@ local OptionConfig = {
 				}
 			}
 		},
-
-
+		{
+			Name = "Gun",
+			Icon = "rbxthumb://type=Asset&id=78135843224493&w=150&h=150",
+			Color = Color3.fromRGB(255, 115, 70),
+			Sections = {
+				{
+					Name = "Gun Toggle",
+					Description = "Enable or disable weapon keybind handling",
+					Options = {
+						{Type = "toggle", Name = "Enable Gun Keybind", Description = "Allow custom gun keybind", Callback = "SetGunEnabled", Default = false},
+						{Type = "toggle", Name = "Enable Knife Keybind", Description = "Allow custom knife keybind", Callback = "SetKnifeEnabled", Default = false}
+					}
+				},
+				{
+					Name = "Gun Keybinds",
+					Description = "Choose custom keys",
+					Options = {
+						{Type = "textbox", Name = "Gun Keybind", Description = "MouseButton1, Q, F, etc", Placeholder = "MouseButton1", ButtonText = "Set", Callback = "SetGunKeybind"},
+						{Type = "textbox", Name = "Knife Keybind", Description = "E, Q, F, etc", Placeholder = "E", ButtonText = "Set", Callback = "SetKnifeKeybind"}
+					}
+				},
+				{
+					Name = "Weapon Delay",
+					Description = "Set weapon delays without spam",
+					Options = {
+						{Type = "textbox", Name = "Gun Delay", Description = "Seconds between gun shots, example 0.35", Placeholder = "0.35", ButtonText = "Set", Callback = "SetGunDelay"},
+						{Type = "textbox", Name = "Knife Delay", Description = "Seconds between knife uses, example 0.35", Placeholder = "0.35", ButtonText = "Set", Callback = "SetKnifeDelay"},
+						{Type = "textbox", Name = "OK Delay", Description = "Seconds between OK shots, example 0.25", Placeholder = "0.25", ButtonText = "Set", Callback = "SetOKDelay"}
+					}
+				},
+				{
+					Name = "Manual Use",
+					Description = "Use detected weapon once",
+					Options = {
+						{Type = "button", Name = "Use Gun", Description = "Equip gun, click once, then unequip safely", Callback = "UseDetectedGun", Half = true},
+						{Type = "button", Name = "Use Knife", Description = "Equip knife, press E once, then unequip safely", Callback = "UseDetectedKnife", Half = true}
+					}
+				}
+			}
+		},
+		{
+			Name = "Match Teleport",
+			Icon = "rbxthumb://type=Asset&id=104884198091376&w=150&h=150",
+			Color = Color3.fromRGB(255, 190, 80),
+			Sections = {
+				{
+					Name = "Match Mode",
+					Description = "Choose the queue size",
+					Options = {
+						{Type = "button", Name = "1v1", Description = "Use 1v1 lobby circles", Callback = "SelectMatch1v1", Half = true, SelectionGroup = "MatchMode", SelectionValue = "1v1", SelectedDefault = true},
+						{Type = "button", Name = "2v2", Description = "Use 2v2 lobby circles", Callback = "SelectMatch2v2", Half = true, SelectionGroup = "MatchMode", SelectionValue = "2v2"},
+						{Type = "button", Name = "3v3", Description = "Use 3v3 lobby circles", Callback = "SelectMatch3v3", Half = true, SelectionGroup = "MatchMode", SelectionValue = "3v3"},
+						{Type = "button", Name = "4v4", Description = "Use 4v4 lobby circles", Callback = "SelectMatch4v4", Half = true, SelectionGroup = "MatchMode", SelectionValue = "4v4"},
+						{Type = "button", Name = "5v5", Description = "Use 5v5 lobby circles", Callback = "SelectMatch5v5", SelectionGroup = "MatchMode", SelectionValue = "5v5"}
+					}
+				},
+				{
+					Name = "Arena",
+					Description = "Choose which lobby arena row",
+					Options = {
+						{Type = "button", Name = "Arena 1", Description = "Use first arena", Callback = "SelectMatchArena1", Half = true, SelectionGroup = "MatchArena", SelectionValue = "1", SelectedDefault = true},
+						{Type = "button", Name = "Arena 2", Description = "Use second arena", Callback = "SelectMatchArena2", Half = true, SelectionGroup = "MatchArena", SelectionValue = "2"}
+					}
+				},
+				{
+					Name = "Circle Side",
+					Description = "Choose the exact circle side",
+					Options = {
+						{Type = "button", Name = "Left Circle", Description = "Use left circle", Callback = "SelectMatchLeft", Half = true, SelectionGroup = "MatchSide", SelectionValue = "Left", SelectedDefault = true},
+						{Type = "button", Name = "Right Circle", Description = "Use right circle", Callback = "SelectMatchRight", Half = true, SelectionGroup = "MatchSide", SelectionValue = "Right"}
+					}
+				},
+				{
+					Name = "Teleport Controls",
+					Description = "Selected mode, arena and side are used here",
+					Options = {
+						{Type = "button", Name = "Teleport Selected", Description = "Teleport to current selected circle", Callback = "TeleportSelectedMatch"},
+						{Type = "toggle", Name = "Auto Match Teleport", Description = "Teleport immediately outside matches, pause during matches, resume when they end", Callback = "SetAutoMatchTeleport", Default = false},
+						{Type = "separator", Name = "---------------------"},
+						{Type = "toggle", Name = "Auto Teleport User", Description = "1v1 only. Follow the opponent during the match. admin movement option", Callback = "SetAutoTeleportUser", Default = false},
+						{Type = "separator", Name = "---------------------"},
+						{Type = "toggle", Name = "Auto Knife", Description = "1v1 only. Keep the knife equipped. admin movement option", Callback = "SetAutoKnife", Default = false},
+						{Type = "separator", Name = "---------------------"},
+						{Type = "toggle", Name = "Auto Swing", Description = "1v1 only. Uses knife while held and falls back to gun if knife is missing. admin movement option", Callback = "SetAutoSwing", Default = false}
+					}
+				}
+			}
+		},
 		{
 			Name = "Settings",
 			Icon = "rbxthumb://type=Asset&id=109264660442602&w=150&h=150",
@@ -2157,6 +2247,12 @@ function Gui.Create(OptionConfig, Functions)
 	UserInputService.InputBegan:Connect(function(input, typing)
 		if typing then return end
 
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.KeyCode == Enum.KeyCode.ButtonR2
+		then
+			Functions.AttackInputHeld = true
+		end
+
 		if input.KeyCode == Functions.MenuKeybind then
 			if main.Visible then
 				minimizePanel()
@@ -2164,10 +2260,46 @@ function Gui.Create(OptionConfig, Functions)
 				openPanel()
 			end
 		end
+
+		local gunPressed = false
+
+		if Functions.GunKeybind.EnumType == Enum.UserInputType then
+			gunPressed = input.UserInputType == Functions.GunKeybind
+		elseif Functions.GunKeybind.EnumType == Enum.KeyCode then
+			gunPressed = input.KeyCode == Functions.GunKeybind
+		end
+
+		if gunPressed
+			and Functions.States.GunEnabled
+			and Functions.CanUseMatchWeapon
+			and Functions.CanUseMatchWeapon()
+			and not Functions.GunBusy
+		then
+			Functions.GunBusy = true
+			Functions.UseDetectedGun()
+			task.delay(math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60), function()
+				Functions.GunBusy = false
+			end)
+		elseif input.KeyCode == Functions.KnifeKeybind
+			and Functions.States.KnifeEnabled
+			and Functions.CanUseMatchWeapon
+			and Functions.CanUseMatchWeapon()
+			and not Functions.KnifeBusy
+		then
+			Functions.KnifeBusy = true
+			Functions.UseDetectedKnife()
+			task.delay(math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60), function()
+				Functions.KnifeBusy = false
+			end)
+		end
 	end)
 
 	UserInputService.InputEnded:Connect(function(input)
-		Functions.AttackInputHeld = false
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.KeyCode == Enum.KeyCode.ButtonR2
+		then
+			Functions.AttackInputHeld = false
+		end
 	end)
 
 
@@ -2941,8 +3073,40 @@ function Functions.TeleportSelectedMatch(ignoreMatchCheck)
 end
 
 function Functions.SetAutoMatchTeleport(state)
-	Functions.States.AutoMatchTeleport = false
-	return false
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoMatchTeleport = false
+		return
+	end
+
+	Functions.States.AutoMatchTeleport = state
+	Functions.AutoMatchTeleportId = (Functions.AutoMatchTeleportId or 0) + 1
+
+	resetMatchTeleportWatcher()
+
+	local id = Functions.AutoMatchTeleportId
+
+	if not state then
+		return
+	end
+
+	task.spawn(function()
+		local lastTeleport = 0
+
+		while Functions.States.AutoMatchTeleport
+			and Functions.AutoMatchTeleportId == id
+		do
+			local now = os.clock()
+
+			if shouldPauseAutoMatchTeleport() then
+				task.wait(0.04)
+			elseif now - lastTeleport >= 0.85 then
+				lastTeleport = now
+				Functions.TeleportSelectedMatch(false)
+			else
+				task.wait(0.04)
+			end
+		end
+	end)
 end
 
 local function getOneVsOneOpponent()
@@ -2985,9 +3149,55 @@ local function getOneVsOneOpponent()
 end
 
 function Functions.SetAutoTeleportUser(state)
-	Functions.States.AutoTeleportUser = false
-	return false
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoTeleportUser = false
+		return
+	end
+
+	Functions.States.AutoTeleportUser = state
+	Functions.AutoTeleportUserId = (Functions.AutoTeleportUserId or 0) + 1
+
+	local id = Functions.AutoTeleportUserId
+
+	if not state then
+		return
+	end
+
+	task.spawn(function()
+		while Functions.States.AutoTeleportUser
+			and Functions.AutoTeleportUserId == id
+		do
+			if Functions.SelectedMatchMode == "1v1" and isLocalPlayerInMatch() then
+				local opponent = getOneVsOneOpponent()
+				local character = lp.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				local opponentCharacter = opponent and opponent.Character
+				local opponentRoot = opponentCharacter
+					and opponentCharacter:FindFirstChild("HumanoidRootPart")
+
+				if root and opponentRoot then
+					local target = opponentRoot.CFrame * CFrame.new(0, 0, 3)
+
+					if Functions.States.AutoTeleportUser
+						and Functions.SelectedMatchMode == "1v1"
+						and isLocalPlayerInMatch()
+					then
+						character:PivotTo(target)
+						root.AssemblyLinearVelocity = Vector3.zero
+						root.AssemblyAngularVelocity = Vector3.zero
+					end
+				end
+
+				task.wait(10)
+			else
+				task.wait(10)
+			end
+		end
+	end)
 end
+
+local TRIDENT_MESH = "97342506881515"
+local TRIDENT_TEXTURE = "74965169667348"
 
 local function assetDigits(value)
 	local text = tostring(value or "")
@@ -3204,7 +3414,6 @@ end
 function Functions.BuyEventChest(silent, autoMode)
 	local now = os.clock()
 	local delayValue = autoMode
-		and math.clamp(tonumber(Functions.Values.AutoBuyDelay) or 90, 90, 600)
 		or math.clamp(tonumber(Functions.Values.ManualEventBuyDelay) or 10, 10, 60)
 
 	if Functions.LastEventBuyAttempt
@@ -3267,6 +3476,16 @@ function Functions.BuyEventChest(silent, autoMode)
 	return successCount > 0
 end
 
+	if Functions.SafeStartupLocked and state == true then
+		return
+	end
+
+
+	if state then
+		Functions.LastAutoBuyChestCheck = os.clock()
+		Functions.LastEventBuyAttempt = Functions.LastEventBuyAttempt or 0
+	end
+end
 
 local function findAtlantisCrateInCrateTable(crateTable)
 	if type(crateTable) ~= "table" then
@@ -3371,7 +3590,6 @@ end
 function Functions.OpenAtlantisChest(silent, autoMode)
 	local now = os.clock()
 	local delayValue = autoMode
-		and math.clamp(tonumber(Functions.Values.AutoOpenDelay) or 60, 60, 300)
 		or math.clamp(tonumber(Functions.Values.ManualEventOpenDelay) or 10, 10, 60)
 
 	if Functions.LastEventOpenAttempt
@@ -3435,6 +3653,15 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 	return success, item
 end
 
+	if Functions.SafeStartupLocked and state == true then
+		return
+	end
+
+
+	if state then
+		Functions.LastEventOpenAttempt = Functions.LastEventOpenAttempt or 0
+	end
+end
 
 local function getAdminTools()
 	local result = {}
@@ -3599,7 +3826,7 @@ local function unequipAdminTool(tool, delayTime)
 end
 
 local function sendKeyOnce(keyCode)
-	if false and VirtualInputManager then
+	if VirtualInputManager then
 		local ok = pcall(function()
 			VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
 			task.wait(0.08)
@@ -3615,7 +3842,7 @@ local function sendKeyOnce(keyCode)
 end
 
 local function sendMouseClickOnce()
-	if false and VirtualInputManager then
+	if VirtualInputManager then
 		local location = UserInputService:GetMouseLocation()
 		local ok = pcall(function()
 			VirtualInputManager:SendMouseButtonEvent(location.X, location.Y, 0, true, game, 0)
@@ -4225,7 +4452,9 @@ function Functions.LoadConfig(silent)
 			Functions.Values.EventBuyAmount = math.clamp(math.floor(tonumber(data.Values.EventBuyAmount)), 1, 25)
 		end
 
+		end
 
+		end
 
 		if tonumber(data.Values.AutoSaveDelay) then
 			Functions.Values.AutoSaveDelay = math.clamp(tonumber(data.Values.AutoSaveDelay), 30, 600)
@@ -4284,17 +4513,53 @@ function Functions.LoadConfig(silent)
 			end
 		end
 
-		Functions.States.GunEnabled = false
+		if type(data.States.GunEnabled) == "boolean" then
+			if data.States.GunEnabled == true then
+				safeCall("SetGunEnabled", true)
+			else
+				Functions.States.GunEnabled = false
+			end
+		end
 
-		Functions.States.KnifeEnabled = false
+		if type(data.States.KnifeEnabled) == "boolean" then
+			if data.States.KnifeEnabled == true then
+				safeCall("SetKnifeEnabled", true)
+			else
+				Functions.States.KnifeEnabled = false
+			end
+		end
 
-		Functions.States.AutoMatchTeleport = false
+		if type(data.States.AutoMatchTeleport) == "boolean" then
+			if data.States.AutoMatchTeleport == true then
+				safeCall("SetAutoMatchTeleport", true)
+			else
+				Functions.States.AutoMatchTeleport = false
+			end
+		end
 
-		Functions.States.AutoTeleportUser = false
+		if type(data.States.AutoTeleportUser) == "boolean" then
+			if data.States.AutoTeleportUser == true then
+				safeCall("SetAutoTeleportUser", true)
+			else
+				Functions.States.AutoTeleportUser = false
+			end
+		end
 
-		Functions.States.AutoKnife = false
+		if type(data.States.AutoKnife) == "boolean" then
+			if data.States.AutoKnife == true then
+				safeCall("SetAutoKnife", true)
+			else
+				Functions.States.AutoKnife = false
+			end
+		end
 
-		Functions.States.AutoSwing = false
+		if type(data.States.AutoSwing) == "boolean" then
+			if data.States.AutoSwing == true then
+				safeCall("SetAutoSwing", true)
+			else
+				Functions.States.AutoSwing = false
+			end
+		end
 
 		if type(data.States.AutoCollect) == "boolean" then
 			if data.States.AutoCollect == true then
@@ -4304,7 +4569,13 @@ function Functions.LoadConfig(silent)
 			end
 		end
 
+			else
+			end
+		end
 
+			else
+			end
+		end
 	end
 
 	Functions.LastLoadedConfigData = data
@@ -4395,7 +4666,31 @@ local function shouldAutoLoadConfig()
 end
 
 function Functions.AutoLoadConfigOnStart()
-	return false
+	if Functions.AutoLoadConfigStarted then
+		return false
+	end
+
+	Functions.AutoLoadConfigStarted = true
+
+	task.defer(function()
+		task.wait(4)
+
+		if not shouldAutoLoadConfig() then
+			return
+		end
+
+		Functions.LoadConfig(true)
+
+		if Functions.GuiObjects
+			and Functions.GuiObjects.Minimized
+			and Functions.GuiObjects.Main
+			and Functions.GuiObjects.Main.Visible
+		then
+			Functions.GuiObjects.Minimized.Visible = false
+		end
+	end)
+
+	return true
 end
 
 local function parseDelayText(text, fallback, minimum, maximum)
@@ -4465,6 +4760,26 @@ function Functions.SetOKDelay(text)
 end
 
 
+	if Functions.Notify then
+	end
+
+	if not Functions.ConfigLoading then
+		task.defer(function()
+			Functions.SaveConfig(true, true)
+		end)
+	end
+end
+
+
+	if Functions.Notify then
+	end
+
+	if not Functions.ConfigLoading then
+		task.defer(function()
+			Functions.SaveConfig(true, true)
+		end)
+	end
+end
 
 function Functions.SetGunKeybind(text)
 	text = tostring(text or ""):gsub("%s+", "")
@@ -4491,21 +4806,59 @@ function Functions.SetKnifeKeybind(text)
 end
 
 function Functions.SetGunEnabled(state)
-	Functions.States.GunEnabled = false
-	return false
+	Functions.States.GunEnabled = state
 end
 
 function Functions.SetKnifeEnabled(state)
-	Functions.States.KnifeEnabled = false
-	return false
+	Functions.States.KnifeEnabled = state
 end
 
 function Functions.UseDetectedGun()
-	return false
+	if not Functions.CanUseMatchWeapon() then
+		return false
+	end
+
+	local now = os.clock()
+	local delayValue = math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60)
+
+	if Functions.LastManualGunUse
+		and now - Functions.LastManualGunUse < delayValue
+	then
+		return false
+	end
+
+	local gun = detectAdminGun()
+
+	if not gun then
+		return false
+	end
+
+	Functions.LastManualGunUse = now
+	return useAdminTool(gun, "gun", 0.45)
 end
 
 function Functions.UseDetectedKnife()
-	return false
+	if not Functions.CanUseMatchWeapon() then
+		return false
+	end
+
+	local now = os.clock()
+	local delayValue = math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60)
+
+	if Functions.LastManualKnifeUse
+		and now - Functions.LastManualKnifeUse < delayValue
+	then
+		return false
+	end
+
+	local knife = detectAdminKnife()
+
+	if not knife then
+		return false
+	end
+
+	Functions.LastManualKnifeUse = now
+	return useAdminTool(knife, "knife", 0.45)
 end
 
 local function findKnifeForAutoEquip()
@@ -4600,13 +4953,88 @@ local function equipKnifeForAuto()
 end
 
 function Functions.SetAutoKnife(state)
-	Functions.States.AutoKnife = false
-	return false
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoKnife = false
+		return
+	end
+
+	Functions.States.AutoKnife = state
+	Functions.AutoKnifeId = (Functions.AutoKnifeId or 0) + 1
+
+	local id = Functions.AutoKnifeId
+
+	if not state then
+		return
+	end
+
+	task.spawn(function()
+		while Functions.States.AutoKnife
+			and Functions.AutoKnifeId == id
+		do
+			if Functions.SelectedMatchMode == "1v1" then
+				equipKnifeForAuto()
+				task.wait(0.1)
+			else
+				task.wait(10)
+			end
+		end
+	end)
 end
 
 function Functions.SetAutoSwing(state)
-	Functions.States.AutoSwing = false
-	return false
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoSwing = false
+		return
+	end
+
+	Functions.States.AutoSwing = state
+	Functions.AutoSwingId = (Functions.AutoSwingId or 0) + 1
+
+	local id = Functions.AutoSwingId
+
+	if not state then
+		return
+	end
+
+	task.spawn(function()
+		local lastGunUse = 0
+
+		while Functions.States.AutoSwing
+			and Functions.AutoSwingId == id
+		do
+			if Functions.SelectedMatchMode == "1v1"
+				and isLocalPlayerInMatch()
+				and Functions.AttackInputHeld
+			then
+				local equipped, knife = equipKnifeForAuto()
+
+				if equipped and knife then
+					pcall(function()
+						knife:Activate()
+					end)
+
+					task.wait(math.clamp(tonumber(Functions.Values.KnifeDelay) or 10, 10, 60))
+				else
+					local now = os.clock()
+
+					if now - lastGunUse >= math.clamp(tonumber(Functions.Values.GunDelay) or 10, 10, 60) then
+						local gun = detectAdminGun()
+
+						if gun then
+							lastGunUse = now
+							pcall(function()
+								useAdminTool(gun, "gun", 0.45)
+							end)
+						end
+					end
+
+					task.wait(10)
+				end
+			else
+				task.wait(0.08)
+			end
+		end
+	end)
 end
 
 local function getMatchStatsGui()
