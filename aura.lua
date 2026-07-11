@@ -2318,6 +2318,7 @@ function Gui.Create(OptionConfig, Functions)
 	main.BackgroundTransparency = 1
 
 	Functions.LoadScreen(function()
+		Functions.SafeStartupLocked = false
 		Functions.GuiLoaded = true
 		minimized.Visible = false
 		main.Visible = true
@@ -2406,6 +2407,7 @@ Functions.TeamHighlightConnections = {}
 Functions.HitboxParts = {}
 Functions.HitboxConnections = {}
 Functions.LastAvatarUsername = nil
+Functions.SafeStartupLocked = true
 
 local function sideFromText(value)
 	if value == nil then return nil end
@@ -3079,6 +3081,11 @@ function Functions.TeleportSelectedMatch(ignoreMatchCheck)
 end
 
 function Functions.SetAutoMatchTeleport(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoMatchTeleport = false
+		return
+	end
+
 	Functions.States.AutoMatchTeleport = state
 	Functions.AutoMatchTeleportId = (Functions.AutoMatchTeleportId or 0) + 1
 
@@ -3150,6 +3157,11 @@ local function getOneVsOneOpponent()
 end
 
 function Functions.SetAutoTeleportUser(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoTeleportUser = false
+		return
+	end
+
 	Functions.States.AutoTeleportUser = state
 	Functions.AutoTeleportUserId = (Functions.AutoTeleportUserId or 0) + 1
 
@@ -3279,6 +3291,11 @@ function Functions.CollectEventItems()
 end
 
 function Functions.SetAutoCollect(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoCollect = false
+		return
+	end
+
 	Functions.States.AutoCollect = state
 	Functions.AutoCollectId = (Functions.AutoCollectId or 0) + 1
 
@@ -3470,6 +3487,11 @@ function Functions.BuyEventChest(silent, autoMode)
 end
 
 function Functions.SetAutoBuyEventChest(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoBuyEventChest = false
+		return
+	end
+
 	Functions.States.AutoBuyEventChest = state
 
 	if state then
@@ -3646,6 +3668,11 @@ function Functions.OpenAtlantisChest(silent, autoMode)
 end
 
 function Functions.SetAutoOpenChest(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoOpenChest = false
+		return
+	end
+
 	Functions.States.AutoOpenChest = state
 
 	if state then
@@ -4273,18 +4300,6 @@ function Functions.ApplyConfigToUI(data)
 		end
 	end
 
-	local function safeApplyUiCallback(callback, value)
-		if type(callback) == "string"
-			and callback:sub(1, 10) ~= "Selection:"
-			and callback ~= "GuiTheme"
-			and type(Functions[callback]) == "function"
-		then
-			pcall(function()
-				Functions[callback](value)
-			end)
-		end
-	end
-
 	if type(data.States) == "table" then
 		setControl("SetNotifications", data.States.Notifications)
 		setControl("SetAntiAFK", data.States.AntiAFK)
@@ -4320,7 +4335,6 @@ function Functions.ApplyConfigToUI(data)
 				pcall(function()
 					control.Set(value, true)
 				end)
-				safeApplyUiCallback(key, value)
 			elseif type(key) == "string" and key:sub(1, 10) == "Selection:" then
 				local groupName = key:sub(11)
 				local group = Functions.SelectionButtons and Functions.SelectionButtons[groupName]
@@ -4364,6 +4378,8 @@ function Functions.ApplyConfigToUI(data)
 end
 
 function Functions.LoadConfig(silent)
+	Functions.SafeStartupLocked = false
+
 	if not configSupported() or not configExists() then
 		if not silent and Functions.Notify then
 			Functions.Notify("Axi", "No config found", 3)
@@ -4410,9 +4426,21 @@ function Functions.LoadConfig(silent)
 
 	if type(data.UIConfig) == "table" then
 		for key, value in pairs(data.UIConfig) do
+			local activeToggle =
+				key == "SetAutoCollect"
+				or key == "SetAutoOpenChest"
+				or key == "SetAutoBuyEventChest"
+				or key == "SetAutoMatchTeleport"
+				or key == "SetAutoTeleportUser"
+				or key == "SetAutoKnife"
+				or key == "SetAutoSwing"
+				or key == "SetAutoCloseStats"
+				or key == "SetAntiAFK"
+
 			if type(key) == "string"
 				and key:sub(1, 10) ~= "Selection:"
 				and key ~= "GuiTheme"
+				and not activeToggle
 			then
 				safeCall(key, value)
 			end
@@ -4486,55 +4514,107 @@ function Functions.LoadConfig(silent)
 		end
 
 		if type(data.States.AutoLoadConfig) == "boolean" then
-			safeCall("SetAutoLoadConfig", data.States.AutoLoadConfig)
+			if data.States.AutoLoadConfig == true then
+				safeCall("SetAutoLoadConfig", true)
+			else
+				Functions.States.AutoLoadConfig = false
+			end
 		end
 
 		if type(data.States.AutoSaveConfig) == "boolean" then
-			safeCall("SetAutoSaveConfig", data.States.AutoSaveConfig)
+			if data.States.AutoSaveConfig == true then
+				safeCall("SetAutoSaveConfig", true)
+			else
+				Functions.States.AutoSaveConfig = false
+			end
 		end
 
 		if type(data.States.AntiAFK) == "boolean" then
-			safeCall("SetAntiAFK", data.States.AntiAFK)
+			if data.States.AntiAFK == true then
+				safeCall("SetAntiAFK", true)
+			else
+				Functions.States.AntiAFK = false
+			end
 		end
 
 		if type(data.States.AutoCloseStats) == "boolean" then
-			safeCall("SetAutoCloseStats", data.States.AutoCloseStats)
+			if data.States.AutoCloseStats == true then
+				safeCall("SetAutoCloseStats", true)
+			else
+				Functions.States.AutoCloseStats = false
+			end
 		end
 
 		if type(data.States.GunEnabled) == "boolean" then
-			safeCall("SetGunEnabled", data.States.GunEnabled)
+			if data.States.GunEnabled == true then
+				safeCall("SetGunEnabled", true)
+			else
+				Functions.States.GunEnabled = false
+			end
 		end
 
 		if type(data.States.KnifeEnabled) == "boolean" then
-			safeCall("SetKnifeEnabled", data.States.KnifeEnabled)
+			if data.States.KnifeEnabled == true then
+				safeCall("SetKnifeEnabled", true)
+			else
+				Functions.States.KnifeEnabled = false
+			end
 		end
 
 		if type(data.States.AutoMatchTeleport) == "boolean" then
-			safeCall("SetAutoMatchTeleport", data.States.AutoMatchTeleport)
+			if data.States.AutoMatchTeleport == true then
+				safeCall("SetAutoMatchTeleport", true)
+			else
+				Functions.States.AutoMatchTeleport = false
+			end
 		end
 
 		if type(data.States.AutoTeleportUser) == "boolean" then
-			safeCall("SetAutoTeleportUser", data.States.AutoTeleportUser)
+			if data.States.AutoTeleportUser == true then
+				safeCall("SetAutoTeleportUser", true)
+			else
+				Functions.States.AutoTeleportUser = false
+			end
 		end
 
 		if type(data.States.AutoKnife) == "boolean" then
-			safeCall("SetAutoKnife", data.States.AutoKnife)
+			if data.States.AutoKnife == true then
+				safeCall("SetAutoKnife", true)
+			else
+				Functions.States.AutoKnife = false
+			end
 		end
 
 		if type(data.States.AutoSwing) == "boolean" then
-			safeCall("SetAutoSwing", data.States.AutoSwing)
+			if data.States.AutoSwing == true then
+				safeCall("SetAutoSwing", true)
+			else
+				Functions.States.AutoSwing = false
+			end
 		end
 
 		if type(data.States.AutoCollect) == "boolean" then
-			safeCall("SetAutoCollect", data.States.AutoCollect)
+			if data.States.AutoCollect == true then
+				safeCall("SetAutoCollect", true)
+			else
+				Functions.States.AutoCollect = false
+			end
 		end
 
 		if type(data.States.AutoOpenChest) == "boolean" then
-			safeCall("SetAutoOpenChest", data.States.AutoOpenChest)
+			if data.States.AutoOpenChest == true then
+				safeCall("SetAutoOpenChest", true)
+			else
+				Functions.States.AutoOpenChest = false
+			end
 		end
 
 		if type(data.States.AutoBuyEventChest) == "boolean" then
-			safeCall("SetAutoBuyEventChest", data.States.AutoBuyEventChest)
+			if data.States.AutoBuyEventChest == true then
+				safeCall("SetAutoBuyEventChest", true)
+			else
+				Functions.States.AutoBuyEventChest = false
+			end
 		end
 	end
 
@@ -4592,7 +4672,37 @@ function Functions.ConfigStatus()
 end
 
 local function shouldAutoLoadConfig()
-	return configSupported() and configExists()
+	if not configSupported() or not configExists() then
+		return false
+	end
+
+	local configText = readConfigText()
+
+	if type(configText) ~= "string" or configText == "" then
+		return false
+	end
+
+	local ok, data = pcall(function()
+		return HttpService:JSONDecode(configText)
+	end)
+
+	if not ok or type(data) ~= "table" then
+		return false
+	end
+
+	if type(data.States) == "table"
+		and data.States.AutoLoadConfig == true
+	then
+		return true
+	end
+
+	if type(data.UIConfig) == "table"
+		and data.UIConfig.SetAutoLoadConfig == true
+	then
+		return true
+	end
+
+	return false
 end
 
 function Functions.AutoLoadConfigOnStart()
@@ -4603,7 +4713,7 @@ function Functions.AutoLoadConfigOnStart()
 	Functions.AutoLoadConfigStarted = true
 
 	task.defer(function()
-		task.wait(3.6)
+		task.wait(4)
 
 		if not shouldAutoLoadConfig() then
 			return
@@ -4611,7 +4721,11 @@ function Functions.AutoLoadConfigOnStart()
 
 		Functions.LoadConfig(true)
 
-		if Functions.GuiObjects and Functions.GuiObjects.Minimized and Functions.GuiObjects.Main and Functions.GuiObjects.Main.Visible then
+		if Functions.GuiObjects
+			and Functions.GuiObjects.Minimized
+			and Functions.GuiObjects.Main
+			and Functions.GuiObjects.Main.Visible
+		then
 			Functions.GuiObjects.Minimized.Visible = false
 		end
 	end)
@@ -4885,6 +4999,11 @@ local function equipKnifeForAuto()
 end
 
 function Functions.SetAutoKnife(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoKnife = false
+		return
+	end
+
 	Functions.States.AutoKnife = state
 	Functions.AutoKnifeId = (Functions.AutoKnifeId or 0) + 1
 
@@ -4909,6 +5028,11 @@ function Functions.SetAutoKnife(state)
 end
 
 function Functions.SetAutoSwing(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoSwing = false
+		return
+	end
+
 	Functions.States.AutoSwing = state
 	Functions.AutoSwingId = (Functions.AutoSwingId or 0) + 1
 
@@ -5110,6 +5234,11 @@ local function bindMatchStatsAutoClose()
 end
 
 function Functions.SetAntiAFK(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AntiAFK = false
+		return
+	end
+
 	Functions.States.AntiAFK = state
 
 	if Functions.AntiAFKConnection then
@@ -5134,6 +5263,11 @@ function Functions.SetAntiAFK(state)
 end
 
 function Functions.SetAutoCloseStats(state)
+	if Functions.SafeStartupLocked and state == true then
+		Functions.States.AutoCloseStats = false
+		return
+	end
+
 	Functions.States.AutoCloseStats = state
 	bindMatchStatsAutoClose()
 
