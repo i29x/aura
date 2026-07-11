@@ -102,7 +102,6 @@ local OptionConfig = {
 	Assets = {
 		Logo = "rbxassetid://137296929509496",
 		DominationIcon = "rbxthumb://type=Asset&id=83399776429635&w=150&h=150",
-		MatchTeleportIcon = "rbxthumb://type=Asset&id=104884198091376&w=150&h=150",
 		EventIcon = "rbxthumb://type=Asset&id=76358039663036&w=150&h=150",
 		GunIcon = "rbxthumb://type=Asset&id=78135843224493&w=150&h=150",
 		PlayersIcon = "rbxthumb://type=Asset&id=127295787879229&w=150&h=150",
@@ -313,54 +312,7 @@ local OptionConfig = {
 				}
 			}
 		},
-		{
-			Name = "Match Teleport",
-			Icon = "rbxthumb://type=Asset&id=104884198091376&w=150&h=150",
-			Color = Color3.fromRGB(255, 190, 80),
-			Sections = {
-				{
-					Name = "Match Mode",
-					Description = "Choose the queue size",
-					Options = {
-						{Type = "button", Name = "1v1", Description = "Use 1v1 lobby circles", Callback = "SelectMatch1v1", Half = true, SelectionGroup = "MatchMode", SelectionValue = "1v1", SelectedDefault = true},
-						{Type = "button", Name = "2v2", Description = "Use 2v2 lobby circles", Callback = "SelectMatch2v2", Half = true, SelectionGroup = "MatchMode", SelectionValue = "2v2"},
-						{Type = "button", Name = "3v3", Description = "Use 3v3 lobby circles", Callback = "SelectMatch3v3", Half = true, SelectionGroup = "MatchMode", SelectionValue = "3v3"},
-						{Type = "button", Name = "4v4", Description = "Use 4v4 lobby circles", Callback = "SelectMatch4v4", Half = true, SelectionGroup = "MatchMode", SelectionValue = "4v4"},
-						{Type = "button", Name = "5v5", Description = "Use 5v5 lobby circles", Callback = "SelectMatch5v5", SelectionGroup = "MatchMode", SelectionValue = "5v5"}
-					}
-				},
-				{
-					Name = "Arena",
-					Description = "Choose which lobby arena row",
-					Options = {
-						{Type = "button", Name = "Arena 1", Description = "Use first arena", Callback = "SelectMatchArena1", Half = true, SelectionGroup = "MatchArena", SelectionValue = "1", SelectedDefault = true},
-						{Type = "button", Name = "Arena 2", Description = "Use second arena", Callback = "SelectMatchArena2", Half = true, SelectionGroup = "MatchArena", SelectionValue = "2"}
-					}
-				},
-				{
-					Name = "Circle Side",
-					Description = "Choose the exact circle side",
-					Options = {
-						{Type = "button", Name = "Left Circle", Description = "Use left circle", Callback = "SelectMatchLeft", Half = true, SelectionGroup = "MatchSide", SelectionValue = "Left", SelectedDefault = true},
-						{Type = "button", Name = "Right Circle", Description = "Use right circle", Callback = "SelectMatchRight", Half = true, SelectionGroup = "MatchSide", SelectionValue = "Right"}
-					}
-				},
-				{
-					Name = "Teleport Controls",
-					Description = "Selected mode, arena and side are used here",
-					Options = {
-						{Type = "button", Name = "Teleport Selected", Description = "Teleport to current selected circle", Callback = "TeleportSelectedMatch"},
-						{Type = "toggle", Name = "Auto Match Teleport", Description = "Teleport immediately outside matches, pause during matches, resume when they end", Callback = "SetAutoMatchTeleport", Default = false},
-						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Teleport User", Description = "1v1 only. Follow the opponent during the match. admin movement option", Callback = "SetAutoTeleportUser", Default = false},
-						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Knife", Description = "1v1 only. Keep the knife equipped. admin movement option", Callback = "SetAutoKnife", Default = false},
-						{Type = "separator", Name = "---------------------"},
-						{Type = "toggle", Name = "Auto Swing", Description = "1v1 only. Uses knife while held and falls back to gun if knife is missing. admin movement option", Callback = "SetAutoSwing", Default = false}
-					}
-				}
-			}
-		},
+
 		{
 			Name = "Settings",
 			Icon = "rbxthumb://type=Asset&id=109264660442602&w=150&h=150",
@@ -2346,8 +2298,6 @@ Functions.States = {
 	HideLogo = false,
 	TeamRainbow = false,
 	EnemyRainbow = false,
-	AutoMatchTeleport = false,
-	AutoTeleportUser = false,
 	AutoKnife = false,
 	AutoSwing = false,
 	AntiAFK = false,
@@ -2684,62 +2634,7 @@ local function teleportToPlayer(player)
 end
 
 
-Functions.MatchLocations = {
-	["1v1"] = {
-		[1] = {
-			Left = Vector3.new(-303.084808349609375, 241.808029174804688, -0.373334735631943),
-			Right = Vector3.new(-297.515106201171875, 241.808029174804688, -0.543307602405548)
-		},
-		[2] = {
-			Left = Vector3.new(-302.945404052734375, 241.808029174804688, 31.215753555297852),
-			Right = Vector3.new(-295.819274902343750, 241.808029174804688, 32.124301910400391)
-		}
-	},
-	["2v2"] = {
-		[1] = {
-			Left = Vector3.new(-286.341491699218750, 241.808029174804688, 0.298778653144836),
-			Right = Vector3.new(-279.289367675781250, 241.808029174804688, -0.390891194343567)
-		},
-		[2] = {
-			Left = Vector3.new(-287.076629638671875, 241.808029174804688, 31.265998840332031),
-			Right = Vector3.new(-279.128540039062500, 241.808044433593750, 31.554454803466797)
-		}
-	},
-	["3v3"] = {
-		[1] = {
-			Left = Vector3.new(-269.742797851562500, 241.808029174804688, 0.103964291512966),
-			Right = Vector3.new(-263.713165283203125, 241.808029174804688, 0.278522223234177)
-		},
-		[2] = {
-			Left = Vector3.new(-270.615203857421875, 241.808029174804688, 31.554899215698242),
-			Right = Vector3.new(-263.200988769531250, 241.808029174804688, 31.007457733154297)
-		}
-	},
-	["4v4"] = {
-		[1] = {
-			Left = Vector3.new(-253.807815551757812, 241.808029174804688, -0.435267329216003),
-			Right = Vector3.new(-247.181716918945312, 241.808029174804688, 0.491979122161865)
-		},
-		[2] = {
-			Left = Vector3.new(-253.991012573242188, 241.808029174804688, 32.312515258789062),
-			Right = Vector3.new(-246.484161376953125, 241.808044433593750, 32.115348815917969)
-		}
-	},
-	["5v5"] = {
-		[1] = {
-			Left = Vector3.new(-237.325988769531250, 241.808029174804688, 0.465870589017868),
-			Right = Vector3.new(-229.069747924804688, 241.808044433593750, 0.269989609718323)
-		},
-		[2] = {
-			Left = Vector3.new(-237.791717529296875, 241.808029174804688, 31.399333953857422),
-			Right = Vector3.new(-228.998733520507812, 241.808029174804688, 31.571865081787109)
-		}
-	}
-}
 
-Functions.SelectedMatchMode = "1v1"
-Functions.SelectedMatchArena = 1
-Functions.SelectedMatchSide = "Left"
 Functions.GunKeybind = Enum.UserInputType.MouseButton1
 Functions.KnifeKeybind = Enum.KeyCode.E
 Functions.GunBusy = false
@@ -2873,6 +2768,19 @@ local function isLocalPlayerInMatch()
 	return false
 end
 
+function Functions.CanUseMatchWeapon()
+	local character = lp.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+
+	if not character or not humanoid or humanoid.Health <= 0 or not root then
+		return false
+	end
+
+	return isLocalPlayerInMatch()
+end
+
+
 local function getNearestMatchQueueDistance()
 	local character = lp.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -2883,7 +2791,6 @@ local function getNearestMatchQueueDistance()
 
 	local best = math.huge
 
-	for _, modeData in pairs(Functions.MatchLocations) do
 		for _, arenaData in pairs(modeData) do
 			for _, position in pairs(arenaData) do
 				local distance = (root.Position - position).Magnitude
@@ -2898,306 +2805,21 @@ local function getNearestMatchQueueDistance()
 	return best
 end
 
-function Functions.CanUseMatchWeapon()
-	local character = lp.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local root = character and character:FindFirstChild("HumanoidRootPart")
 
-	if not character or not humanoid or humanoid.Health <= 0 or not root then
-		return false
-	end
 
-	return isLocalPlayerInMatch()
-end
 
-function Functions.SelectMatch1v1()
-	Functions.SelectedMatchMode = "1v1"
-end
 
-function Functions.SelectMatch2v2()
-	Functions.SelectedMatchMode = "2v2"
-end
 
-function Functions.SelectMatch3v3()
-	Functions.SelectedMatchMode = "3v3"
-end
 
-function Functions.SelectMatch4v4()
-	Functions.SelectedMatchMode = "4v4"
-end
 
-function Functions.SelectMatch5v5()
-	Functions.SelectedMatchMode = "5v5"
-end
 
-function Functions.SelectMatchArena1()
-	Functions.SelectedMatchArena = 1
-end
 
-function Functions.SelectMatchArena2()
-	Functions.SelectedMatchArena = 2
-end
 
-function Functions.SelectMatchLeft()
-	Functions.SelectedMatchSide = "Left"
-end
 
-function Functions.SelectMatchRight()
-	Functions.SelectedMatchSide = "Right"
-end
 
-local function getSelectedMatchPosition()
-	local modeData = Functions.MatchLocations[Functions.SelectedMatchMode]
-	local arenaData = modeData and modeData[Functions.SelectedMatchArena]
-	return arenaData and arenaData[Functions.SelectedMatchSide]
-end
 
-local function getOppositeMatchPosition()
-	local modeData = Functions.MatchLocations[Functions.SelectedMatchMode]
-	local arenaData = modeData and modeData[Functions.SelectedMatchArena]
 
-	if not arenaData then
-		return nil
-	end
 
-	if Functions.SelectedMatchSide == "Left" then
-		return arenaData.Right
-	end
-
-	return arenaData.Left
-end
-
-local function getPlayersNearQueue(radius)
-	local result = {}
-	local selectedPosition = getSelectedMatchPosition()
-	local oppositePosition = getOppositeMatchPosition()
-
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= lp then
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-			if root and humanoid and humanoid.Health > 0 then
-				local nearSelected = selectedPosition
-					and (root.Position - selectedPosition).Magnitude <= radius
-
-				local nearOpposite = oppositePosition
-					and (root.Position - oppositePosition).Magnitude <= radius
-
-				if nearSelected or nearOpposite then
-					result[player] = root.Position
-				end
-			end
-		end
-	end
-
-	return result
-end
-
-local function resetMatchTeleportWatcher()
-	Functions.MatchTeleportObservedPlayers = {}
-	Functions.MatchTeleportStartHoldUntil = 0
-	Functions.MatchTeleportWasInMatch = false
-end
-
-local function shouldPauseAutoMatchTeleport()
-	local now = os.clock()
-	local inMatch = isLocalPlayerInMatch()
-
-	if inMatch then
-		Functions.MatchTeleportWasInMatch = true
-		return true
-	end
-
-	if Functions.MatchTeleportWasInMatch then
-		Functions.MatchTeleportWasInMatch = false
-		Functions.MatchTeleportStartHoldUntil = now + 0.35
-	end
-
-	local current = getPlayersNearQueue(16)
-	local previous = Functions.MatchTeleportObservedPlayers or {}
-	local hadPlayer = next(previous) ~= nil
-	local hasPlayer = next(current) ~= nil
-
-	if hadPlayer and not hasPlayer then
-		Functions.MatchTeleportStartHoldUntil = math.max(
-			Functions.MatchTeleportStartHoldUntil or 0,
-			now + 6
-		)
-	end
-
-	Functions.MatchTeleportObservedPlayers = current
-
-	return now < (Functions.MatchTeleportStartHoldUntil or 0)
-end
-
-function Functions.TeleportSelectedMatch(ignoreMatchCheck)
-	local position = getSelectedMatchPosition()
-
-	if not position then
-		return false
-	end
-
-	if not ignoreMatchCheck and isLocalPlayerInMatch() then
-		return false
-	end
-
-	local character = lp.Character or lp.CharacterAdded:Wait()
-	local root = character:FindFirstChild("HumanoidRootPart")
-		or character:WaitForChild("HumanoidRootPart", 5)
-
-	if not root then
-		return false
-	end
-
-	local targetCFrame = CFrame.new(position)
-
-	for _ = 1, 4 do
-		if not character.Parent or not root.Parent then
-			return false
-		end
-
-		if not ignoreMatchCheck and isLocalPlayerInMatch() then
-			return false
-		end
-
-		character:PivotTo(targetCFrame)
-		root.CFrame = targetCFrame
-		root.AssemblyLinearVelocity = Vector3.zero
-		root.AssemblyAngularVelocity = Vector3.zero
-		task.wait(0.08)
-	end
-
-	return true
-end
-
-function Functions.SetAutoMatchTeleport(state)
-	if Functions.SafeStartupLocked and state == true then
-		Functions.States.AutoMatchTeleport = false
-		return
-	end
-
-	Functions.States.AutoMatchTeleport = state
-	Functions.AutoMatchTeleportId = (Functions.AutoMatchTeleportId or 0) + 1
-
-	resetMatchTeleportWatcher()
-
-	local id = Functions.AutoMatchTeleportId
-
-	if not state then
-		return
-	end
-
-	task.spawn(function()
-		local lastTeleport = 0
-
-		while Functions.States.AutoMatchTeleport
-			and Functions.AutoMatchTeleportId == id
-		do
-			local now = os.clock()
-
-			if shouldPauseAutoMatchTeleport() then
-				task.wait(0.04)
-			elseif now - lastTeleport >= 0.85 then
-				lastTeleport = now
-				Functions.TeleportSelectedMatch(false)
-			else
-				task.wait(0.04)
-			end
-		end
-	end)
-end
-
-local function getOneVsOneOpponent()
-	if Functions.SelectedMatchMode ~= "1v1" then
-		return nil
-	end
-
-	if not isLocalPlayerInMatch() then
-		return nil
-	end
-
-	local localCharacter = lp.Character
-	local localRoot = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
-
-	if not localRoot then
-		return nil
-	end
-
-	local bestPlayer
-	local bestDistance = math.huge
-
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= lp then
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
-			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-			if root and humanoid and humanoid.Health > 0 then
-				local distance = (root.Position - localRoot.Position).Magnitude
-
-				if distance < bestDistance then
-					bestDistance = distance
-					bestPlayer = player
-				end
-			end
-		end
-	end
-
-	return bestPlayer
-end
-
-function Functions.SetAutoTeleportUser(state)
-	if Functions.SafeStartupLocked and state == true then
-		Functions.States.AutoTeleportUser = false
-		return
-	end
-
-	Functions.States.AutoTeleportUser = state
-	Functions.AutoTeleportUserId = (Functions.AutoTeleportUserId or 0) + 1
-
-	local id = Functions.AutoTeleportUserId
-
-	if not state then
-		return
-	end
-
-	task.spawn(function()
-		while Functions.States.AutoTeleportUser
-			and Functions.AutoTeleportUserId == id
-		do
-			if Functions.SelectedMatchMode == "1v1" and isLocalPlayerInMatch() then
-				local opponent = getOneVsOneOpponent()
-				local character = lp.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart")
-				local opponentCharacter = opponent and opponent.Character
-				local opponentRoot = opponentCharacter
-					and opponentCharacter:FindFirstChild("HumanoidRootPart")
-
-				if root and opponentRoot then
-					local target = opponentRoot.CFrame * CFrame.new(0, 0, 3)
-
-					if Functions.States.AutoTeleportUser
-						and Functions.SelectedMatchMode == "1v1"
-						and isLocalPlayerInMatch()
-					then
-						character:PivotTo(target)
-						root.AssemblyLinearVelocity = Vector3.zero
-						root.AssemblyAngularVelocity = Vector3.zero
-					end
-				end
-
-				task.wait(10)
-			else
-				task.wait(10)
-			end
-		end
-	end)
-end
-
-local TRIDENT_MESH = "97342506881515"
-local TRIDENT_TEXTURE = "74965169667348"
 
 local function assetDigits(value)
 	local text = tostring(value or "")
@@ -4102,8 +3724,6 @@ local function getConfigData()
 			AutoCloseStats = Functions.States.AutoCloseStats,
 			GunEnabled = Functions.States.GunEnabled,
 			KnifeEnabled = Functions.States.KnifeEnabled,
-			AutoMatchTeleport = Functions.States.AutoMatchTeleport,
-			AutoTeleportUser = Functions.States.AutoTeleportUser,
 			AutoKnife = Functions.States.AutoKnife,
 			AutoSwing = Functions.States.AutoSwing,
 			AutoCollect = Functions.States.AutoCollect,
@@ -4118,9 +3738,6 @@ local function getConfigData()
 			AutoSaveDelay = Functions.Values.AutoSaveDelay
 		},
 		Match = {
-			Mode = Functions.SelectedMatchMode,
-			Arena = Functions.SelectedMatchArena,
-			Side = Functions.SelectedMatchSide
 		},
 		UIConfig = Functions.UIConfig or {}
 	}
@@ -4264,8 +3881,6 @@ function Functions.ApplyConfigToUI(data)
 		setControl("SetAutoCloseStats", data.States.AutoCloseStats)
 		setControl("SetGunEnabled", data.States.GunEnabled)
 		setControl("SetKnifeEnabled", data.States.KnifeEnabled)
-		setControl("SetAutoMatchTeleport", data.States.AutoMatchTeleport)
-		setControl("SetAutoTeleportUser", data.States.AutoTeleportUser)
 		setControl("SetAutoKnife", data.States.AutoKnife)
 		setControl("SetAutoSwing", data.States.AutoSwing)
 		setControl("SetAutoCollect", data.States.AutoCollect)
@@ -4307,9 +3922,6 @@ function Functions.ApplyConfigToUI(data)
 
 	if type(data.Match) == "table" and Functions.SelectionButtons then
 		local groups = {
-			MatchMode = data.Match.Mode,
-			MatchArena = data.Match.Arena and tostring(data.Match.Arena),
-			MatchSide = data.Match.Side
 		}
 
 		for groupName, selectedValue in pairs(groups) do
@@ -4380,8 +3992,6 @@ function Functions.LoadConfig(silent)
 		for key, value in pairs(data.UIConfig) do
 			local activeToggle =
 				key == "SetAutoCollect"
-				or key == "SetAutoMatchTeleport"
-				or key == "SetAutoTeleportUser"
 				or key == "SetAutoKnife"
 				or key == "SetAutoSwing"
 				or key == "SetAutoCloseStats"
@@ -4439,16 +4049,12 @@ function Functions.LoadConfig(silent)
 	end
 
 	if type(data.Match) == "table" then
-		if Functions.MatchLocations[data.Match.Mode] then
-			Functions.SelectedMatchMode = data.Match.Mode
 		end
 
 		if data.Match.Arena == 1 or data.Match.Arena == 2 then
-			Functions.SelectedMatchArena = data.Match.Arena
 		end
 
 		if data.Match.Side == "Left" or data.Match.Side == "Right" then
-			Functions.SelectedMatchSide = data.Match.Side
 		end
 	end
 
@@ -4505,19 +4111,11 @@ function Functions.LoadConfig(silent)
 			end
 		end
 
-		if type(data.States.AutoMatchTeleport) == "boolean" then
-			if data.States.AutoMatchTeleport == true then
-				safeCall("SetAutoMatchTeleport", true)
 			else
-				Functions.States.AutoMatchTeleport = false
 			end
 		end
 
-		if type(data.States.AutoTeleportUser) == "boolean" then
-			if data.States.AutoTeleportUser == true then
-				safeCall("SetAutoTeleportUser", true)
 			else
-				Functions.States.AutoTeleportUser = false
 			end
 		end
 
@@ -4921,7 +4519,6 @@ function Functions.SetAutoKnife(state)
 		while Functions.States.AutoKnife
 			and Functions.AutoKnifeId == id
 		do
-			if Functions.SelectedMatchMode == "1v1" then
 				equipKnifeForAuto()
 				task.wait(0.1)
 			else
@@ -4952,7 +4549,6 @@ function Functions.SetAutoSwing(state)
 		while Functions.States.AutoSwing
 			and Functions.AutoSwingId == id
 		do
-			if Functions.SelectedMatchMode == "1v1"
 				and isLocalPlayerInMatch()
 				and Functions.AttackInputHeld
 			then
@@ -5077,7 +4673,6 @@ local function bindMatchStatsAutoClose()
 			return
 		end
 
-		if Functions.States.AutoMatchTeleport then
 			local now = os.clock()
 
 			if not Functions.LastStatsTeleport
@@ -5086,8 +4681,6 @@ local function bindMatchStatsAutoClose()
 				Functions.LastStatsTeleport = now
 
 				task.delay(2, function()
-					if Functions.States.AutoMatchTeleport then
-						Functions.TeleportSelectedMatch()
 					end
 				end)
 			end
@@ -6379,12 +5972,8 @@ local function bindDeathSafety(character)
 	humanoid.Died:Connect(function()
 		Functions.AttackInputHeld = false
 
-		if Functions.States.AutoTeleportUser then
-			Functions.SetAutoTeleportUser(false)
 		end
 
-		if Functions.States.AutoMatchTeleport then
-			Functions.SetAutoMatchTeleport(false)
 		end
 
 		if Functions.States.AutoKnife then
